@@ -1,0 +1,3400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AutoPark Nexus — Autonomous Parking Assistant</title>
+<style>
+/* ============================= DESIGN SYSTEM ============================= */
+:root{
+  --bg:#06090e; --bg2:#0a0f16; --panel:#0e151e; --panel2:#121b25;
+  --line:#1b2836; --line2:#25374a;
+  --txt:#e8eef6; --muted:#8798ad; --dim:#5b6b7e;
+  --cyan:#22d3ee; --teal:#14b8a6; --blue:#3b82f6;
+  --green:#22c55e; --amber:#f59e0b; --red:#ef4444; --violet:#8b5cf6;
+  --r:14px; --r2:10px;
+  --sh:0 8px 28px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  background:
+    radial-gradient(1200px 700px at 78% -10%, rgba(34,211,238,.07), transparent 60%),
+    radial-gradient(900px 600px at 10% 110%, rgba(59,130,246,.06), transparent 60%),
+    var(--bg);
+  color:var(--txt);
+  font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#1e2c3b;border-radius:6px;border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:#2b3d50;background-clip:padding-box}
+
+.app{display:flex;min-height:100vh;min-width:0}
+
+/* ============================= SIDEBAR ============================= */
+.sidebar{
+  width:246px;flex:0 0 246px;background:linear-gradient(180deg,#0a1017,#070b10);
+  border-right:1px solid var(--line);display:flex;flex-direction:column;
+  position:sticky;top:0;height:100vh;z-index:60;
+}
+.brand{display:flex;gap:11px;align-items:center;padding:18px 16px 16px;border-bottom:1px solid var(--line)}
+.brand-mark{
+  width:38px;height:38px;border-radius:11px;flex:0 0 38px;
+  background:linear-gradient(140deg,#22d3ee,#0e7490);
+  display:grid;place-items:center;font-weight:800;color:#04121a;font-size:17px;
+  box-shadow:0 0 22px rgba(34,211,238,.30);
+}
+.brand-name{font-weight:700;font-size:14.5px;letter-spacing:-.2px;line-height:1.2}
+.brand-name span{color:var(--cyan)}
+.brand-sub{font-size:10px;color:var(--dim);letter-spacing:.5px;text-transform:uppercase;margin-top:2px}
+.nav{padding:12px 10px;display:flex;flex-direction:column;gap:3px;flex:1;overflow-y:auto}
+.nav-item{
+  display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:9px;
+  color:var(--muted);cursor:pointer;font-size:13.5px;font-weight:500;
+  border:1px solid transparent;transition:.16s;user-select:none;
+}
+.nav-item svg{width:17px;height:17px;flex:0 0 17px;opacity:.85}
+.nav-item:hover{background:#101a24;color:var(--txt)}
+.nav-item.active{
+  background:linear-gradient(90deg,rgba(34,211,238,.15),rgba(34,211,238,.03));
+  color:#bff2fb;border-color:rgba(34,211,238,.28);
+}
+.nav-item.active svg{color:var(--cyan);opacity:1}
+.side-foot{padding:12px;border-top:1px solid var(--line)}
+.mode-chip{
+  display:inline-flex;align-items:center;gap:7px;font-size:10px;font-weight:700;
+  letter-spacing:.5px;color:var(--amber);background:rgba(245,158,11,.10);
+  border:1px solid rgba(245,158,11,.28);border-radius:999px;padding:5px 10px;
+}
+.mode-chip::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--amber);animation:pulse 1.8s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* ============================= MAIN ============================= */
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{
+  display:flex;align-items:center;gap:14px;padding:14px 22px;
+  border-bottom:1px solid var(--line);background:rgba(9,13,19,.88);
+  backdrop-filter:blur(10px);position:sticky;top:0;z-index:50;
+}
+.topbar h1{margin:0;font-size:16.5px;font-weight:650;letter-spacing:-.2px}
+.topbar .sub{margin:1px 0 0;font-size:11.5px;color:var(--dim)}
+.top-actions{margin-left:auto;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.status-pill{
+  font-size:10px;font-weight:700;letter-spacing:.7px;padding:6px 11px;border-radius:999px;
+  border:1px solid var(--line2);color:var(--muted);background:#0d151e;white-space:nowrap;
+}
+.status-pill.running{color:#7ee7fb;border-color:rgba(34,211,238,.4);background:rgba(34,211,238,.09)}
+.status-pill.paused{color:var(--amber);border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.09)}
+.status-pill.blocked{color:#fca5a5;border-color:rgba(239,68,68,.45);background:rgba(239,68,68,.1)}
+.status-pill.done{color:#86efac;border-color:rgba(34,197,94,.4);background:rgba(34,197,94,.1)}
+.status-pill.nosafe{color:#fca5a5;border-color:rgba(239,68,68,.45);background:rgba(239,68,68,.1)}
+.menu-btn{display:none;background:#101a24;border:1px solid var(--line2);color:var(--txt);
+  width:36px;height:36px;border-radius:9px;font-size:16px;cursor:pointer;flex:0 0 36px}
+
+.content{padding:20px 22px 120px;flex:1;min-width:0}
+body.judge-open .content{padding-bottom:230px}
+
+/* ============================= PRIMITIVES ============================= */
+.card{
+  background:linear-gradient(180deg,#0f1720,#0b121a);
+  border:1px solid var(--line);border-radius:var(--r);padding:17px;
+  box-shadow:var(--sh);min-width:0;
+}
+.card.tight{padding:14px}
+.card-head{display:flex;align-items:center;gap:10px;margin-bottom:13px;flex-wrap:wrap}
+.card-head h3{margin:0;font-size:13.5px;font-weight:650;letter-spacing:.1px}
+.card-head .hint{margin-left:auto;font-size:11px;color:var(--dim)}
+.grid{display:grid;gap:15px;min-width:0}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.muted{color:var(--muted)}
+.dim{color:var(--dim)}
+.tiny{font-size:11px}
+.small{font-size:12.5px}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+h2{margin:0 0 6px;font-size:21px;font-weight:700;letter-spacing:-.4px}
+h4{margin:0 0 8px;font-size:13px;font-weight:650}
+p{margin:0 0 10px}
+
+.btn{
+  display:inline-flex;align-items:center;gap:7px;padding:9px 14px;border-radius:9px;
+  background:#101a24;border:1px solid var(--line2);color:var(--txt);font-size:12.5px;
+  font-weight:600;cursor:pointer;transition:.15s;font-family:inherit;white-space:nowrap;
+}
+.btn:hover{background:#16232f;border-color:#31465c}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn svg{width:15px;height:15px}
+.btn-primary{
+  background:linear-gradient(135deg,#22d3ee,#0891b2);border-color:transparent;color:#03151c;
+  box-shadow:0 0 20px rgba(34,211,238,.22);
+}
+.btn-primary:hover{background:linear-gradient(135deg,#3ee0f7,#0aa2c4);border-color:transparent}
+.btn-danger{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.4);color:#fca5a5}
+.btn-danger:hover{background:rgba(239,68,68,.2)}
+.btn-ghost{background:transparent}
+.btn-sm{padding:6px 11px;font-size:11.5px;border-radius:7px}
+.btn.on{background:rgba(34,211,238,.14);border-color:rgba(34,211,238,.45);color:#bff2fb}
+
+.badge{
+  display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;
+  letter-spacing:.4px;padding:3px 8px;border-radius:6px;border:1px solid var(--line2);
+  color:var(--muted);background:#0d151e;text-transform:uppercase;white-space:nowrap;
+}
+.badge.ok{color:#86efac;border-color:rgba(34,197,94,.35);background:rgba(34,197,94,.09)}
+.badge.warn{color:#fcd34d;border-color:rgba(245,158,11,.35);background:rgba(245,158,11,.09)}
+.badge.bad{color:#fca5a5;border-color:rgba(239,68,68,.35);background:rgba(239,68,68,.09)}
+.badge.info{color:#7ee7fb;border-color:rgba(34,211,238,.35);background:rgba(34,211,238,.09)}
+.badge.violet{color:#c4b5fd;border-color:rgba(139,92,246,.4);background:rgba(139,92,246,.1)}
+
+.stat{
+  background:linear-gradient(180deg,#0f1720,#0b121a);border:1px solid var(--line);
+  border-radius:var(--r);padding:14px 15px;position:relative;overflow:hidden;min-width:0;
+}
+.stat::after{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent,var(--line2))}
+.stat .k{font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:var(--dim);font-weight:600}
+.stat .v{font-size:25px;font-weight:750;letter-spacing:-1px;margin-top:5px;line-height:1.1;word-break:break-word}
+.stat .s{font-size:11px;color:var(--muted);margin-top:3px}
+.stat.cyan{--accent:var(--cyan)} .stat.green{--accent:var(--green)}
+.stat.gray{--accent:#475569} .stat.amber{--accent:var(--amber)}
+.stat.red{--accent:var(--red)} .stat.blue{--accent:var(--blue)}
+.stat.violet{--accent:var(--violet)}
+
+/* ============================= LOT ============================= */
+.lot-wrap{position:relative;width:100%;background:#070c12;border-radius:var(--r2);overflow:hidden;border:1px solid var(--line)}
+svg.lot{display:block;width:100%;height:auto;touch-action:manipulation}
+svg.lot .space{cursor:pointer}
+svg.lot .space rect{transition:fill .25s, stroke .25s}
+svg.lot .space:hover rect{stroke-width:3}
+svg.lot .sp-label{font-size:11px;font-weight:700;font-family:ui-monospace,Menlo,monospace;letter-spacing:.5px;pointer-events:none}
+
+/* ============================= FEED ============================= */
+.feed{display:flex;flex-direction:column;gap:8px;max-height:380px;overflow-y:auto;padding-right:4px}
+.feed-item{display:flex;gap:10px;align-items:flex-start;padding:9px 11px;border-radius:9px;
+  background:#0c141d;border:1px solid #16222e;animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.feed-item .dot{width:7px;height:7px;border-radius:50%;margin-top:5px;flex:0 0 7px;background:var(--dim)}
+.feed-item.info .dot{background:var(--cyan)} .feed-item.ok .dot{background:var(--green)}
+.feed-item.warn .dot{background:var(--amber)} .feed-item.danger .dot{background:var(--red)}
+.feed-text{font-size:12.5px;line-height:1.45;word-break:break-word}
+.feed-time{font-size:10.5px;color:var(--dim);margin-top:2px;font-family:ui-monospace,monospace}
+.empty{padding:24px 14px;text-align:center;color:var(--dim);font-size:12.5px;border:1px dashed var(--line2);border-radius:10px}
+
+.ai-item{padding:10px 12px;border-radius:9px;background:linear-gradient(90deg,rgba(34,211,238,.06),rgba(34,211,238,.01));
+  border:1px solid rgba(34,211,238,.16);animation:fadeIn .3s ease}
+.ai-item .ai-t{font-size:12.5px;line-height:1.5;color:#c6e8f2}
+.ai-item .ai-time{font-size:10.5px;color:var(--dim);margin-top:3px;font-family:ui-monospace,monospace}
+
+/* ============================= STAGES ============================= */
+.stage{
+  display:flex;gap:11px;align-items:center;padding:8px 11px;border-radius:9px;
+  border:1px solid transparent;transition:.2s;font-size:12.5px;color:var(--dim);
+}
+.stage .num{
+  width:21px;height:21px;flex:0 0 21px;border-radius:50%;display:grid;place-items:center;
+  font-size:10.5px;font-weight:700;background:#131d28;color:var(--dim);border:1px solid var(--line2);
+}
+.stage.active{background:rgba(34,211,238,.09);border-color:rgba(34,211,238,.3);color:#bff2fb}
+.stage.active .num{background:var(--cyan);color:#04141a;border-color:transparent;box-shadow:0 0 12px rgba(34,211,238,.5)}
+.stage.done{color:var(--muted)}
+.stage.done .num{background:rgba(34,197,94,.16);color:#86efac;border-color:rgba(34,197,94,.35)}
+.progress{height:4px;border-radius:3px;background:#131d28;overflow:hidden;margin:12px 0 6px}
+.progress > div{height:100%;background:linear-gradient(90deg,#22d3ee,#0ea5e9);width:0%;transition:width .2s linear}
+
+/* ============================= MISC ============================= */
+.kv{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px dashed #16222e;font-size:12.5px}
+.kv:last-child{border-bottom:none}
+.kv .k{color:var(--dim)}
+.kv .v{font-weight:600;text-align:right}
+
+.pipe{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+.pipe-node{
+  padding:8px 12px;border-radius:9px;background:#0d151e;border:1px solid var(--line2);
+  font-size:11.5px;font-weight:600;color:var(--muted);transition:.25s;
+}
+.pipe-node.on{background:rgba(34,211,238,.1);border-color:rgba(34,211,238,.45);color:#bff2fb}
+.pipe-arrow{color:#2b3d50;font-size:14px}
+
+.step-card{padding:15px;border-radius:var(--r);background:linear-gradient(180deg,#0f1720,#0b121a);
+  border:1px solid var(--line);transition:.2s}
+.step-card:hover{border-color:var(--line2);transform:translateY(-2px)}
+.step-num{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--cyan);text-transform:uppercase}
+.step-card h4{margin:8px 0 6px;font-size:14px}
+.step-card p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.55}
+
+.arch{display:flex;flex-direction:column;gap:0;max-width:520px;margin:0 auto}
+.arch-node{padding:11px 16px;border-radius:10px;background:#0d151e;border:1px solid var(--line2);
+  text-align:center;font-size:12.5px;font-weight:600;color:#c6d4e3}
+.arch-node.hi{background:rgba(34,211,238,.08);border-color:rgba(34,211,238,.35);color:#bff2fb}
+.arch-arrow{text-align:center;color:#2b3d50;font-size:14px;line-height:1.4}
+
+.chart{width:100%;height:auto;display:block}
+.ct{font-size:10px;fill:#5b6b7e;font-family:ui-monospace,monospace}
+.cv{font-size:10.5px;fill:#c6d4e3;font-weight:700}
+.donut-num{font-size:22px;fill:#e8eef6;font-weight:700}
+
+table.tbl{width:100%;border-collapse:collapse;font-size:12px}
+table.tbl th{text-align:left;color:var(--dim);font-weight:600;font-size:10px;
+  letter-spacing:.5px;text-transform:uppercase;padding:7px 8px;border-bottom:1px solid var(--line)}
+table.tbl td{padding:8px;border-bottom:1px solid #121b25}
+table.tbl tr:last-child td{border-bottom:none}
+
+.bar-mini{height:6px;border-radius:4px;background:#131d28;overflow:hidden;min-width:60px}
+.bar-mini > div{height:100%;border-radius:4px;background:var(--cyan)}
+
+.plate{
+  display:inline-flex;align-items:center;gap:8px;
+  background:linear-gradient(180deg,#f8fafc,#dbe4ee);
+  color:#0b121a;font-family:ui-monospace,Menlo,monospace;font-weight:800;
+  letter-spacing:2px;font-size:15px;padding:7px 13px;border-radius:7px;
+  border:2px solid #94a3b8;box-shadow:0 3px 10px rgba(0,0,0,.4);
+}
+.plate.small{font-size:12px;padding:5px 10px;letter-spacing:1.5px}
+
+.receipt{background:#0b121a;border:1px solid var(--line2);border-radius:12px;padding:16px;
+  font-family:ui-monospace,Menlo,monospace;font-size:12.5px}
+.receipt .r-row{display:flex;justify-content:space-between;padding:5px 0}
+.receipt .r-tot{display:flex;justify-content:space-between;padding:10px 0 0;margin-top:8px;
+  border-top:1px dashed #25374a;font-size:15px;font-weight:800;color:#67e8f9}
+.receipt .dash{border-top:1px dashed #25374a;margin:8px 0}
+
+/* ============================= MODAL ============================= */
+.modal-backdrop{
+  position:fixed;inset:0;background:rgba(3,6,10,.75);backdrop-filter:blur(4px);
+  display:none;place-items:center;z-index:200;padding:18px;
+}
+.modal-backdrop.show{display:grid}
+.modal{
+  width:min(560px,100%);max-height:86vh;overflow-y:auto;background:linear-gradient(180deg,#101a24,#0b121a);
+  border:1px solid var(--line2);border-radius:16px;padding:22px;box-shadow:0 24px 70px rgba(0,0,0,.6);
+  animation:modalIn .22s ease;
+}
+@keyframes modalIn{from{opacity:0;transform:scale(.96) translateY(8px)}to{opacity:1;transform:none}}
+
+/* ============================= JUDGE BAR ============================= */
+.judge-bar{
+  position:fixed;left:50%;bottom:16px;transform:translateX(-50%);
+  width:min(920px,calc(100% - 24px));
+  background:linear-gradient(180deg,rgba(15,23,32,.98),rgba(10,16,23,.98));
+  border:1px solid rgba(34,211,238,.3);border-radius:15px;padding:13px 16px;
+  box-shadow:0 18px 50px rgba(0,0,0,.7), 0 0 30px rgba(34,211,238,.09);
+  display:none;z-index:150;backdrop-filter:blur(12px);
+  max-height:52vh;overflow-y:auto;
+}
+.judge-bar.show{display:block}
+.judge-head{display:flex;align-items:center;gap:9px;margin-bottom:7px;flex-wrap:wrap}
+.judge-head .title{font-size:10.5px;font-weight:700;letter-spacing:1px;color:var(--cyan);text-transform:uppercase}
+.judge-title{font-size:14px;font-weight:700;color:#bff2fb;margin-bottom:5px}
+.judge-cap{font-size:12.5px;line-height:1.55;color:#c6d4e3;min-height:38px}
+.judge-ctl{display:flex;gap:7px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.judge-dots{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
+.judge-dots i{width:7px;height:7px;border-radius:50%;background:#25374a;display:block;transition:.2s}
+.judge-dots i.on{background:var(--cyan);box-shadow:0 0 8px rgba(34,211,238,.7)}
+.judge-dots i.past{background:#2f6b7c}
+
+/* ============================= RESPONSIVE ============================= */
+@media(max-width:1200px){
+  .g4{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .g3{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:1000px){
+  .sidebar{position:fixed;left:-270px;top:0;transition:left .25s;height:100vh;width:250px;flex-basis:250px}
+  .sidebar.open{left:0;box-shadow:12px 0 40px rgba(0,0,0,.6)}
+  .menu-btn{display:block}
+  .g2{grid-template-columns:1fr}
+  .content{padding:16px 14px 120px}
+  .topbar{padding:12px 14px}
+}
+@media(max-width:640px){
+  .g3,.g4{grid-template-columns:repeat(2,minmax(0,1fr))}
+  h2{font-size:18px}
+  .stat .v{font-size:20px}
+  .top-actions .btn span{display:none}
+  .btn{padding:8px 11px;font-size:12px}
+  .content{padding:14px 11px 130px}
+  .card{padding:13px}
+  .judge-bar{padding:11px 12px;bottom:10px}
+  .judge-cap{font-size:12px}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <div>
+        <div class="brand-name">AutoPark <span>Nexus</span></div>
+        <div class="brand-sub">Autonomous Parking</div>
+      </div>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="side-foot">
+      <div class="mode-chip">DEMO MODE — SIMULATED DATA</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <button class="menu-btn" id="menuBtn" aria-label="Toggle navigation">☰</button>
+      <div style="min-width:0">
+        <h1 id="pageTitle">Overview</h1>
+        <p class="sub" id="pageSub">Autonomous Parking Command Center</p>
+      </div>
+      <div class="top-actions">
+        <div class="status-pill" id="sysStatus">IDLE</div>
+        <button class="btn btn-sm" id="voiceBtn" title="Toggle voice guidance">🔊 <span>Voice</span></button>
+        <button class="btn btn-primary btn-sm" id="judgeBtn">▶ <span>Run Judge Demo</span></button>
+      </div>
+    </header>
+    <div class="content" id="content"></div>
+  </main>
+</div>
+
+<div class="modal-backdrop" id="modal"><div class="modal" id="modalBody"></div></div>
+
+<div class="judge-bar" id="judgeBar">
+  <div class="judge-head">
+    <span class="title">Judge Demo</span>
+    <span class="badge info" id="judgeSceneNo">Scene 1 / 10</span>
+    <span class="mode-chip">DEMO MODE — SIMULATED DATA</span>
+    <div class="judge-dots" id="judgeDots"></div>
+  </div>
+  <div class="judge-title" id="judgeTitle">—</div>
+  <div class="judge-cap" id="judgeCap">—</div>
+  <div class="judge-ctl">
+    <button class="btn btn-sm" id="judgePrev">◀ Previous</button>
+    <button class="btn btn-sm btn-primary" id="judgeNext">Next ▶</button>
+    <button class="btn btn-sm" id="judgePause">⏸ Pause</button>
+    <button class="btn btn-sm" id="judgeRestart">⟲ Restart</button>
+    <button class="btn btn-sm btn-ghost" id="judgeClose" style="margin-left:auto">Exit Demo</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ==========================================================================
+   AutoPark Nexus — single-file frontend prototype
+   ALL DATA IS SIMULATED. No real cameras, sensors or vehicle control.
+   No localStorage. No external dependencies.
+   ========================================================================== */
+
+/* ------------------------------ CONSTANTS ------------------------------- */
+const COLS = 20, ROWS = 14, CELL = 40;
+const LANE_TOP = 4, LANE_BOTTOM = 9;
+const SPEED = 3.4;                 // grid units per second
+const ENTRY = { x:1.5, y:7.5 };
+const EXIT  = { x:18.5, y:7.5 };
+const CURRENCY = "₹";
+
+/* 12 parking spaces — 6 top band (A), 6 bottom band (B) */
+const SPACE_DEFS = [];
+[["A",1],["B",10]].forEach(function(pair){
+  const letter = pair[0], row = pair[1];
+  for(let i=1;i<=6;i++){
+    SPACE_DEFS.push({
+      id: letter + String(i).padStart(2,"0"),
+      col: 1 + (i-1)*3,
+      row: row,
+      w: 3, h: 3,
+      band: row === 1 ? "top" : "bottom"
+    });
+  }
+});
+
+/* Space categories — standard / ev / disabled */
+const SPACE_TYPES = {
+  A01:"standard", A02:"ev",       A03:"standard", A04:"disabled", A05:"standard", A06:"ev",
+  B01:"standard", B02:"standard", B03:"ev",       B04:"standard", B05:"disabled", B06:"standard"
+};
+
+/* Default occupancy for the demo */
+const DEFAULT_STATUS = {
+  A01:"occupied", A02:"free",     A03:"occupied", A04:"free", A05:"free", A06:"occupied",
+  B01:"occupied", B02:"occupied", B03:"reserved", B04:"occupied", B05:"free", B06:"free"
+};
+
+const DEFAULT_OBSTACLES = [
+  { id:"O1", x:5.5,  y:4.7, r:0.85, type:"object",     label:"Trolley / obstacle" },
+  { id:"O2", x:11.0, y:8.0, r:0.60, type:"pedestrian", label:"Pedestrian" }
+];
+
+/* Scoring weights — transparent heuristic, NOT a trained model */
+const WEIGHTS = { dist:0.32, obstacle:0.22, access:0.18, maneuver:0.10, avail:0.08, policy:0.10 };
+
+const STAGES = [
+  { key:"scan",      label:"Scanning the parking area",           dur:1.8 },
+  { key:"detect",    label:"Detecting vacant spaces",             dur:2.0 },
+  { key:"obstacles", label:"Identifying obstacles",               dur:1.4 },
+  { key:"assess",    label:"Evaluating parking-space safety",     dur:1.8 },
+  { key:"select",    label:"Selecting the most suitable space",   dur:1.6 },
+  { key:"plan",      label:"Planning a collision-aware route",    dur:1.8 },
+  { key:"guide",     label:"Guiding the vehicle along the route", dur:null },
+  { key:"complete",  label:"Completing the parking maneuver",     dur:2.0 }
+];
+
+/* Simulated 24-hour demand curve for the prediction chart */
+const DEMAND_CURVE = [2,1,1,1,2,4,9,16,22,18,13,11,15,17,16,14,15,20,26,21,15,10,6,3];
+
+/* ------------------------------- HELPERS -------------------------------- */
+function $(s,r){ return (r||document).querySelector(s); }
+function $$(s,r){ return Array.prototype.slice.call((r||document).querySelectorAll(s)); }
+function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+function dist2(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+function hash(s){ let h=0; for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; return h; }
+function nowStr(){
+  const d = new Date();
+  return String(d.getHours()).padStart(2,"0") + ":" +
+         String(d.getMinutes()).padStart(2,"0") + ":" +
+         String(d.getSeconds()).padStart(2,"0");
+}
+function angleLerp(a,b,t){
+  const d = ((b - a + 540) % 360) - 180;
+  return a + d * t;
+}
+function pathLength(pts){
+  let L = 0;
+  for(let i=0;i<pts.length-1;i++) L += Math.hypot(pts[i+1].x-pts[i].x, pts[i+1].y-pts[i].y);
+  return L;
+}
+function pointAt(pts, s){
+  if(!pts.length) return { x:0, y:0, angle:0 };
+  if(pts.length === 1) return { x:pts[0].x, y:pts[0].y, angle:0 };
+  let acc = 0;
+  for(let i=0;i<pts.length-1;i++){
+    const a = pts[i], b = pts[i+1];
+    const L = Math.hypot(b.x-a.x, b.y-a.y);
+    if(acc + L >= s || i === pts.length-2){
+      const t = L === 0 ? 0 : clamp((s-acc)/L, 0, 1);
+      return {
+        x: a.x + (b.x-a.x)*t,
+        y: a.y + (b.y-a.y)*t,
+        angle: Math.atan2(b.y-a.y, b.x-a.x) * 180 / Math.PI
+      };
+    }
+    acc += L;
+  }
+  const last = pts[pts.length-1];
+  return { x:last.x, y:last.y, angle:0 };
+}
+function mkPlate(){
+  const states = ["KA","MH","DL","TN","UP","GJ","AP","TS"];
+  const s = states[hash(String(Date.now())) % states.length];
+  const d1 = String(1 + (hash(s+"d") % 98)).padStart(2,"0");
+  const L = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const l1 = L[hash(s+"a") % L.length];
+  const l2 = L[hash(s+"b") % L.length];
+  const num = String(1000 + (hash(s+"n"+Date.now()) % 9000));
+  return s + "-" + d1 + "-" + l1 + l2 + "-" + num;
+}
+
+/* -------------------------------- STATE --------------------------------- */
+const state = {
+  spaces: [],
+  obstacles: [],
+  vehicle: { x:ENTRY.x, y:ENTRY.y, angle:0, isEV:true, parked:false, spaceId:null },
+  path: [],
+  targetId: null,
+  recommendedId: null,
+  scores: [],
+  scanRevealed: false,
+  events: [],        // activity feed
+  decisions: [],     // AI decision log (plain-language)
+  obstaclesEnabled: true,
+  voice: false,
+  sim: { status:"idle", stage:-1, stageT:0, vehicleS:0, injected:false, blockedT:0, mode:null },
+  session: { plate:null, entryClock:null, simMinutes:0, spaceId:null, active:false, receipt:null },
+  judge: { active:false, idx:0, paused:false, auto:false },
+  metrics: {
+    runs:0, scans:0, spacesScanned:0, vacantDetected:0,
+    obstaclesIdentified:0, reroutes:0, completions:0,
+    parkTimes:[], recCounts:{}, unsafeRejections:0,
+    timeSavedMin:0, fuelSavedL:0, co2SavedKg:0, revenue:0
+  }
+};
+
+let evtSeq = 0, decSeq = 0;
+let activeLots = [];
+let currentPage = "overview";
+let detectTimer = null;
+
+/* -------------------------------- LOGGING -------------------------------- */
+function logEvt(type, text){
+  state.events.unshift({ id:++evtSeq, type:type, text:text, time:nowStr() });
+  if(state.events.length > 80) state.events.pop();
+}
+function logAI(text){
+  state.decisions.unshift({ id:++decSeq, text:text, time:nowStr() });
+  if(state.decisions.length > 60) state.decisions.pop();
+}
+
+/* -------------------------------- VOICE ---------------------------------- */
+function speak(text){
+  if(!state.voice) return;
+  if(typeof window.speechSynthesis === "undefined") return;
+  try{
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.0; u.pitch = 1.0; u.volume = 0.9;
+    window.speechSynthesis.speak(u);
+  }catch(e){ /* voice is optional — never break the app */ }
+}
+function toggleVoice(){
+  state.voice = !state.voice;
+  if(!state.voice && typeof window.speechSynthesis !== "undefined"){
+    try{ window.speechSynthesis.cancel(); }catch(e){}
+  }
+  updateVoiceBtn();
+  logEvt("info", state.voice ? "Voice guidance enabled." : "Voice guidance disabled.");
+  if(state.voice) speak("Voice guidance enabled.");
+  emit();
+}
+function updateVoiceBtn(){
+  const b = $("#voiceBtn");
+  if(!b) return;
+  b.classList.toggle("on", state.voice);
+  b.textContent = state.voice ? "🔊 Voice ON" : "🔈 Voice";
+}
+
+/* ------------------------------ PATHFINDING ------------------------------ */
+const DIRS = [
+  [1,0,1],[-1,0,1],[0,1,1],[0,-1,1],
+  [1,1,Math.SQRT2],[1,-1,Math.SQRT2],[-1,1,Math.SQRT2],[-1,-1,Math.SQRT2]
+];
+
+function buildBlockedSet(obstacles){
+  const s = new Set();
+  for(let i=0;i<obstacles.length;i++){
+    const o = obstacles[i];
+    const R = o.r + 0.45;
+    for(let c=1;c<=COLS-2;c++){
+      for(let r=LANE_TOP;r<=LANE_BOTTOM;r++){
+        if(Math.hypot(c+0.5-o.x, r+0.5-o.y) <= R) s.add(c+","+r);
+      }
+    }
+  }
+  return s;
+}
+function cellFree(c, r, blocked, extra){
+  if(c < 1 || c > COLS-2) return false;
+  if(r >= LANE_TOP && r <= LANE_BOTTOM) return !blocked.has(c+","+r);
+  return extra.has(c+","+r);
+}
+function octile(c,r,gc,gr){
+  const dc = Math.abs(c-gc), dr = Math.abs(r-gr);
+  return Math.max(dc,dr) + (Math.SQRT2-1)*Math.min(dc,dr);
+}
+function aStar(start, goal, blocked, extra){
+  const key = function(c,r){ return c+","+r; };
+  const open = [];
+  const gScore = new Map();
+  const came = new Map();
+  const closed = new Set();
+  const sk = key(start.c, start.r);
+  gScore.set(sk, 0);
+  open.push({ c:start.c, r:start.r, f: octile(start.c, start.r, goal.c, goal.r) });
+
+  let guard = 0;
+  while(open.length && guard++ < 40000){
+    open.sort(function(a,b){ return a.f - b.f; });
+    const cur = open.shift();
+    const ck = key(cur.c, cur.r);
+    if(closed.has(ck)) continue;
+    closed.add(ck);
+
+    if(cur.c === goal.c && cur.r === goal.r){
+      const out = [];
+      let k = ck;
+      while(k){
+        const parts = k.split(",");
+        out.push([Number(parts[0]), Number(parts[1])]);
+        k = came.get(k);
+      }
+      return out.reverse();
+    }
+
+    const gcur = gScore.get(ck) || 0;
+    for(let d=0; d<DIRS.length; d++){
+      const dc = DIRS[d][0], dr = DIRS[d][1], cost = DIRS[d][2];
+      const nc = cur.c + dc, nr = cur.r + dr;
+      if(!cellFree(nc, nr, blocked, extra)) continue;
+      if(dc && dr){
+        if(!cellFree(cur.c + dc, cur.r, blocked, extra)) continue;
+        if(!cellFree(cur.c, cur.r + dr, blocked, extra)) continue;
+      }
+      const nk = key(nc, nr);
+      if(closed.has(nk)) continue;
+      const ng = gcur + cost;
+      const prev = gScore.has(nk) ? gScore.get(nk) : Infinity;
+      if(ng < prev){
+        gScore.set(nk, ng);
+        came.set(nk, ck);
+        open.push({ c:nc, r:nr, f: ng + octile(nc, nr, goal.c, goal.r) });
+      }
+    }
+  }
+  return null;
+}
+function lineClear(a, b, blocked, extra){
+  const d = Math.hypot(b.x-a.x, b.y-a.y);
+  const steps = Math.max(2, Math.ceil(d / 0.2));
+  const offs = [[0,0],[0.55,0],[-0.55,0],[0,0.55],[0,-0.55]];
+  for(let k=0;k<=steps;k++){
+    const t = k/steps;
+    const x = a.x + (b.x-a.x)*t;
+    const y = a.y + (b.y-a.y)*t;
+    for(let i=0;i<offs.length;i++){
+      if(!cellFree(Math.floor(x+offs[i][0]), Math.floor(y+offs[i][1]), blocked, extra)) return false;
+    }
+  }
+  return true;
+}
+function smoothPath(pts, blocked, extra){
+  if(pts.length < 3) return pts;
+  const out = [pts[0]];
+  let i = 0;
+  while(i < pts.length-1){
+    let j = pts.length-1;
+    for(; j > i+1; j--){
+      if(lineClear(pts[i], pts[j], blocked, extra)) break;
+    }
+    out.push(pts[j]);
+    i = j;
+  }
+  return out;
+}
+function spaceCells(sp){
+  const out = [];
+  for(let c=sp.col;c<sp.col+sp.w;c++)
+    for(let r=sp.row;r<sp.row+sp.h;r++) out.push(c+","+r);
+  return out;
+}
+
+/** Generic planner: from a start position to a goal position, with an "extra" passable set. */
+function planRoute(startPos, goalPos, extraCells){
+  const blocked = buildBlockedSet(state.obstacles);
+  const extra = new Set(extraCells || []);
+  const start = {
+    c: clamp(Math.floor(startPos.x), 1, COLS-2),
+    r: clamp(Math.floor(startPos.y), 1, ROWS-2)
+  };
+  const goal = {
+    c: clamp(Math.floor(goalPos.x), 1, COLS-2),
+    r: clamp(Math.floor(goalPos.y), 1, ROWS-2)
+  };
+
+  // If the start cell is not passable, nudge to the nearest passable neighbour.
+  if(!cellFree(start.c, start.r, blocked, extra)){
+    let fixed = null;
+    for(let dc=-1; dc<=1 && !fixed; dc++){
+      for(let dr=-1; dr<=1 && !fixed; dr++){
+        if(cellFree(start.c+dc, start.r+dr, blocked, extra)) fixed = { c:start.c+dc, r:start.r+dr };
+      }
+    }
+    if(!fixed) return null;
+    start.c = fixed.c; start.r = fixed.r;
+  }
+
+  const cells = aStar(start, goal, blocked, extra);
+  if(!cells) return null;
+
+  let pts = cells.map(function(cr){ return { x:cr[0]+0.5, y:cr[1]+0.5 }; });
+  pts[0] = { x: startPos.x, y: startPos.y };
+  pts[pts.length-1] = { x: goalPos.x, y: goalPos.y };
+  pts = smoothPath(pts, blocked, extra);
+
+  // Remove duplicate consecutive points
+  const clean = [pts[0]];
+  for(let i=1;i<pts.length;i++){
+    const p = pts[i], q = clean[clean.length-1];
+    if(Math.hypot(p.x-q.x, p.y-q.y) > 0.02) clean.push(p);
+  }
+  return { path: clean, length: pathLength(clean) };
+}
+
+/** Route to a parking space from the current vehicle position. */
+function computeRouteTo(space, fromPos){
+  const from = fromPos || state.vehicle;
+  return planRoute(from, { x: space.col+1.5, y: space.row+1.5 }, spaceCells(space));
+}
+
+/** Route from the current vehicle position out to the exit gate. */
+function computeExitRoute(){
+  if(!state.vehicle.spaceId) return planRoute(state.vehicle, EXIT, []);
+  const sp = state.spaces.find(function(s){ return s.id === state.vehicle.spaceId; });
+  if(!sp) return planRoute(state.vehicle, EXIT, []);
+  return planRoute(state.vehicle, EXIT, spaceCells(sp));
+}
+
+/* --------------------------- SAFETY ASSESSMENT --------------------------- */
+function entryPoint(sp){
+  return { x: sp.col + 1.5, y: sp.band === "top" ? LANE_TOP + 0.3 : LANE_BOTTOM + 0.7 };
+}
+function approachSamples(sp){
+  const cx = sp.col + 1.5;
+  if(sp.band === "top") return [[cx,4.5],[cx,5.5],[cx,6.5]];
+  return [[cx,9.5],[cx,8.5],[cx,7.5]];
+}
+
+function assessSpace(sp){
+  const entry = entryPoint(sp);
+
+  // 1. Obstacle proximity to the space entry
+  let minObs = Infinity;
+  for(let i=0;i<state.obstacles.length;i++){
+    minObs = Math.min(minObs, dist2(state.obstacles[i], entry));
+  }
+  const obsSafety = clamp(minObs / 4, 0, 1);
+
+  // 2. Approach clearance
+  const samples = approachSamples(sp);
+  let freeSamples = 0;
+  for(let i=0;i<samples.length;i++){
+    let blocked = false;
+    for(let j=0;j<state.obstacles.length;j++){
+      const o = state.obstacles[j];
+      if(Math.hypot(samples[i][0]-o.x, samples[i][1]-o.y) < o.r + 0.5){ blocked = true; break; }
+    }
+    if(!blocked) freeSamples++;
+  }
+  const clearance = freeSamples / samples.length;
+
+  // 3. Maneuver difficulty
+  let difficulty = 0.30 + 0.25;
+  const idx = state.spaces.findIndex(function(s){ return s.id === sp.id; });
+  const left  = state.spaces[idx-1];
+  const right = state.spaces[idx+1];
+  if(left  && left.band  === sp.band && left.status  === "occupied") difficulty += 0.10;
+  if(right && right.band === sp.band && right.status === "occupied") difficulty += 0.10;
+  difficulty = clamp(difficulty, 0, 1);
+
+  // 4. Route reachability
+  const route = computeRouteTo(sp);
+
+  return {
+    id: sp.id,
+    entry: entry,
+    minObs: minObs,
+    obsSafety: obsSafety,
+    clearance: clearance,
+    difficulty: difficulty,
+    reachable: !!route,
+    path: route ? route.path : null,
+    distance: route ? route.length : Infinity,
+    score: null,
+    parts: null
+  };
+}
+
+function runAssessment(){
+  const vacant = state.spaces.filter(function(s){ return s.status === "free"; });
+  const results = vacant.map(assessSpace);
+
+  for(let i=0;i<state.spaces.length;i++){
+    const sp = state.spaces[i];
+    if(sp.status !== "free"){ sp.unsafe = false; sp.assessment = null; continue; }
+    const r = results.find(function(x){ return x.id === sp.id; });
+    sp.assessment = r || null;
+    sp.unsafe = !r || !r.reachable || r.clearance < 0.34;
+  }
+
+  const cands = results.filter(function(r){ return r.reachable; });
+  const maxD = cands.length ? Math.max.apply(null, cands.map(function(c){ return c.distance; })) : 1;
+
+  for(let i=0;i<cands.length;i++){
+    const c = cands[i];
+    const sp = state.spaces.find(function(s){ return s.id === c.id; });
+    const nd = maxD > 0 ? c.distance / maxD : 0;
+
+    // Policy term: accessible bays reserved for drivers who need them,
+    // EV bays preferred for EV vehicles.
+    let policy = 0.5;
+    if(sp && sp.type === "disabled") policy = state.vehicle.accessible ? 1 : 0;
+    if(sp && sp.type === "ev") policy = state.vehicle.isEV ? 1 : 0.15;
+    if(sp && sp.type === "standard") policy = 0.75;
+
+    const parts = {
+      dist:     WEIGHTS.dist     * (1 - nd),
+      obstacle: WEIGHTS.obstacle * c.obsSafety,
+      access:   WEIGHTS.access   * c.clearance,
+      maneuver: WEIGHTS.maneuver * (1 - c.difficulty),
+      avail:    WEIGHTS.avail    * 1,
+      policy:   WEIGHTS.policy   * policy
+    };
+    c.score = 100 * (parts.dist + parts.obstacle + parts.access + parts.maneuver + parts.avail + parts.policy);
+    c.parts = parts;
+    c.normDist = nd;
+  }
+  cands.sort(function(a,b){ return b.score - a.score; });
+
+  state.scores = results;
+  return cands;
+}
+
+function runRecommendation(){
+  const ranked = runAssessment();
+  if(!ranked.length){
+    state.recommendedId = null;
+    state.targetId = null;
+    state.sim.status = "nosafe";
+    logEvt("danger", "No safe parking space found — every free space has a blocked approach.");
+    logAI("No safe space available. All free spaces have a blocked or unreachable approach. " +
+          "The vehicle should wait or the lot should be rescanned.");
+    speak("No safe parking space found. Please wait or rescan.");
+    return null;
+  }
+
+  state.recommendedId = ranked[0].id;
+  state.targetId = ranked[0].id;
+  const top = ranked[0];
+  const sp = state.spaces.find(function(s){ return s.id === top.id; });
+
+  const rejected = state.scores.filter(function(s){ return !s.reachable; }).map(function(s){ return s.id; });
+  if(rejected.length) state.metrics.unsafeRejections += rejected.length;
+
+  logEvt("ok", "Recommended space " + top.id + " (score " + top.score.toFixed(1) +
+        ", route " + top.distance.toFixed(1) + " units).");
+  if(rejected.length) logEvt("warn", "Rejected " + rejected.join(", ") + " — approach blocked or route unreachable.");
+
+  logAI("Chosen space " + top.id + " with a safety score of " + top.score.toFixed(0) +
+        " out of 100. It is reachable in " + top.distance.toFixed(1) + " grid units, its approach lane is " +
+        Math.round(top.clearance*100) + "% clear, and the nearest obstacle is " +
+        (isFinite(top.minObs) ? top.minObs.toFixed(1) + " units away" : "not detected") + "." +
+        (rejected.length ? " Rejected " + rejected.join(", ") + " because the approach is blocked." : ""));
+
+  speak("Recommended space " + top.id + ". " + (rejected.length ? "Nearest space rejected as unsafe." : ""));
+
+  state.metrics.recCounts[top.id] = (state.metrics.recCounts[top.id] || 0) + 1;
+  return top;
+}
+
+/* ------------------------------- LOT VIEW -------------------------------- */
+function spaceColors(sp){
+  // Priority: target highlight > unsafe > status/type colours
+  if(sp.status === "occupied")
+    return { fill:"rgba(71,85,105,0.20)", stroke:"#475569", text:"#94a3b8", tag:"OCCUPIED" };
+  if(sp.status === "reserved")
+    return { fill:"rgba(245,158,11,0.13)", stroke:"#f59e0b", text:"#fcd34d", tag:"RESERVED" };
+  if(sp.unsafe)
+    return { fill:"rgba(239,68,68,0.13)", stroke:"#ef4444", text:"#fca5a5", tag:"UNSAFE" };
+  if(sp.type === "ev")
+    return { fill:"rgba(34,211,238,0.12)", stroke:"#22d3ee", text:"#67e8f9", tag:"EV" };
+  if(sp.type === "disabled")
+    return { fill:"rgba(139,92,246,0.13)", stroke:"#8b5cf6", text:"#c4b5fd", tag:"ACCESSIBLE" };
+  return { fill:"rgba(34,197,94,0.12)", stroke:"#22c55e", text:"#86efac", tag:"FREE" };
+}
+
+function LotView(svg, opts){
+  this.svg = svg;
+  this.opts = Object.assign({
+    interactive:true, boxes:false, showPath:true, showEgo:true
+  }, opts || {});
+  this.spaceEls = {};
+  this.build();
+  this.update();
+  this.egoUpdate();
+}
+
+LotView.prototype.mk = function(tag, attrs){
+  const e = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+};
+
+LotView.prototype.build = function(){
+  const W = COLS*CELL, H = ROWS*CELL;
+  const svg = this.svg;
+  svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+  svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+  svg.innerHTML = "";
+
+  svg.appendChild(this.mk("rect", { x:0, y:0, width:W, height:H, fill:"#070c12" }));
+
+  // Driving lanes
+  svg.appendChild(this.mk("rect", {
+    x:0, y:LANE_TOP*CELL, width:W, height:(LANE_BOTTOM-LANE_TOP+1)*CELL, fill:"#0b131c"
+  }));
+  svg.appendChild(this.mk("line", {
+    x1:0, y1:LANE_TOP*CELL, x2:W, y2:LANE_TOP*CELL,
+    stroke:"#1b2a3a", "stroke-width":2, "stroke-dasharray":"12 10"
+  }));
+  svg.appendChild(this.mk("line", {
+    x1:0, y1:(LANE_BOTTOM+1)*CELL, x2:W, y2:(LANE_BOTTOM+1)*CELL,
+    stroke:"#1b2a3a", "stroke-width":2, "stroke-dasharray":"12 10"
+  }));
+  svg.appendChild(this.mk("line", {
+    x1:0, y1:7*CELL, x2:W, y2:7*CELL,
+    stroke:"#141f2b", "stroke-width":3, "stroke-dasharray":"16 16"
+  }));
+
+  // Entry / exit gates
+  svg.appendChild(this.mk("rect", {
+    x:0, y:6.2*CELL, width:14, height:1.6*CELL, fill:"#22c55e", opacity:0.55
+  }));
+  svg.appendChild(this.mk("rect", {
+    x:W-14, y:6.2*CELL, width:14, height:1.6*CELL, fill:"#f59e0b", opacity:0.55
+  }));
+
+  // Spaces
+  this.spacesG = this.mk("g", {});
+  svg.appendChild(this.spacesG);
+  for(let i=0;i<SPACE_DEFS.length;i++){
+    const sp = SPACE_DEFS[i];
+    const g = this.mk("g", { "class":"space", "data-id":sp.id });
+    const rect = this.mk("rect", {
+      x: sp.col*CELL+4, y: sp.row*CELL+4,
+      width: sp.w*CELL-8, height: sp.h*CELL-8,
+      rx:8, fill:"#16202c", stroke:"#243343", "stroke-width":2
+    });
+    const label = this.mk("text", {
+      x:(sp.col+1.5)*CELL,
+      y: sp.band === "top" ? sp.row*CELL+24 : (sp.row+sp.h)*CELL-24,
+      "text-anchor":"middle", "class":"sp-label", fill:"#5b6b7e"
+    });
+    label.textContent = sp.id;
+
+    const typeTag = this.mk("text", {
+      x:(sp.col+1.5)*CELL,
+      y: sp.band === "top" ? sp.row*CELL+40 : (sp.row+sp.h)*CELL-40,
+      "text-anchor":"middle", "class":"sp-label", fill:"#5b6b7e", "font-size":9
+    });
+    typeTag.textContent = "";
+
+    const car = this.mk("rect", {
+      x:(sp.col+1.5)*CELL-24, y:(sp.row+1.5)*CELL-44,
+      width:48, height:88, rx:10, fill:"#33455a", stroke:"#48607a",
+      "stroke-width":1.5, opacity:0
+    });
+
+    g.appendChild(rect);
+    g.appendChild(car);
+    g.appendChild(label);
+    g.appendChild(typeTag);
+    if(this.opts.interactive){
+      (function(id){
+        g.addEventListener("click", function(){ onSpaceClick(id); });
+      })(sp.id);
+    }
+    this.spacesG.appendChild(g);
+    this.spaceEls[sp.id] = { g:g, rect:rect, label:label, tag:typeTag, car:car };
+  }
+
+  // Layers
+  this.boxesG = this.mk("g", {});
+  this.obsG   = this.mk("g", {});
+  this.pathG  = this.mk("g", {});
+  svg.appendChild(this.boxesG);
+  svg.appendChild(this.obsG);
+  svg.appendChild(this.pathG);
+
+  // Ego vehicle
+  const ego = this.mk("g", {});
+  ego.appendChild(this.mk("rect", { x:-50, y:-28, width:100, height:56, rx:14, fill:"#22d3ee", opacity:0.16 }));
+  ego.appendChild(this.mk("rect", { x:-48, y:-26, width:96, height:52, rx:12, fill:"#22d3ee", stroke:"#a5f3fc", "stroke-width":2 }));
+  ego.appendChild(this.mk("rect", { x:4, y:-17, width:26, height:34, rx:6, fill:"#04141a", opacity:0.55 }));
+  ego.appendChild(this.mk("rect", { x:-40, y:-17, width:14, height:34, rx:5, fill:"#04141a", opacity:0.3 }));
+  this.egoG = ego;
+  if(this.opts.showEgo) svg.appendChild(ego);
+
+  // Scan overlay
+  this.scanG = this.mk("g", { opacity:0 });
+  this.scanBand = this.mk("rect", { x:-70, y:0, width:70, height:H, fill:"#22d3ee", opacity:0.10 });
+  this.scanEdge = this.mk("line", { x1:0, y1:0, x2:0, y2:H, stroke:"#22d3ee", "stroke-width":2, opacity:0.85 });
+  this.scanG.appendChild(this.scanBand);
+  this.scanG.appendChild(this.scanEdge);
+  svg.appendChild(this.scanG);
+
+  this.scanX = -70;
+  this.W = W; this.H = H;
+};
+
+LotView.prototype.update = function(){
+  for(let i=0;i<state.spaces.length;i++){
+    const sp = state.spaces[i];
+    const e = this.spaceEls[sp.id];
+    if(!e) continue;
+
+    let c;
+    if(sp.status === "unknown" && !state.scanRevealed){
+      c = { fill:"#101a24", stroke:"#1a2632", text:"#3f4f61", tag:"" };
+    } else {
+      c = spaceColors(sp);
+    }
+
+    // Target / recommendation highlights
+    if(state.recommendedId === sp.id && state.targetId !== sp.id){
+      c = { fill:"rgba(34,211,238,0.14)", stroke:"#22d3ee", text:"#67e8f9", tag:"BEST" };
+    }
+    if(state.targetId === sp.id){
+      c = { fill:"rgba(34,211,238,0.24)", stroke:"#67e8f9", text:"#a5f3fc", tag:"TARGET" };
+    }
+
+    e.rect.setAttribute("fill", c.fill);
+    e.rect.setAttribute("stroke", c.stroke);
+    e.label.setAttribute("fill", c.text);
+    e.car.setAttribute("opacity", sp.status === "occupied" ? 1 : 0);
+
+    // Type / status tag
+    let tag = "";
+    if(sp.status === "occupied") tag = "OCCUPIED";
+    else if(sp.status === "reserved") tag = "RESERVED";
+    else if(sp.unsafe) tag = "UNSAFE";
+    else if(sp.type === "ev") tag = "⚡ EV";
+    else if(sp.type === "disabled") tag = "♿ ACCESS";
+    else if(sp.status === "free") tag = "FREE";
+    e.tag.textContent = tag;
+    e.tag.setAttribute("fill", c.text);
+  }
+
+  // Obstacles
+  this.obsG.innerHTML = "";
+  for(let i=0;i<state.obstacles.length;i++){
+    const o = state.obstacles[i];
+    const col = o.type === "pedestrian" ? "#f59e0b" : (o.type === "dynamic" ? "#f59e0b" : "#ef4444");
+    this.obsG.appendChild(this.mk("circle", {
+      cx:o.x*CELL, cy:o.y*CELL, r:o.r*CELL, fill:col, opacity:0.14
+    }));
+    this.obsG.appendChild(this.mk("circle", {
+      cx:o.x*CELL, cy:o.y*CELL, r:o.r*CELL, fill:"none",
+      stroke:col, "stroke-width":1.5, "stroke-dasharray":"5 5", opacity:0.75
+    }));
+    this.obsG.appendChild(this.mk("circle", { cx:o.x*CELL, cy:o.y*CELL, r:6, fill:col }));
+  }
+
+  // Route
+  this.pathG.innerHTML = "";
+  if(this.opts.showPath && state.path.length > 1){
+    const pts = state.path.map(function(p){ return (p.x*CELL) + "," + (p.y*CELL); }).join(" ");
+    const blocked = state.sim.status === "blocked";
+    const mkPoly = (function(self){
+      return function(stroke, w, dash, op){
+        const el = self.mk("polyline", {
+          points:pts, fill:"none", stroke:stroke, "stroke-width":w,
+          "stroke-linecap":"round", "stroke-linejoin":"round", opacity:op
+        });
+        if(dash) el.setAttribute("stroke-dasharray", dash);
+        return el;
+      };
+    })(this);
+
+    this.pathG.appendChild(mkPoly("rgba(34,211,238,0.18)", 16, null, 1));
+    this.pathG.appendChild(mkPoly(blocked ? "#ef4444" : "#22d3ee", 4, "12 10", 0.95));
+
+    for(let i=1;i<state.path.length-1;i++){
+      this.pathG.appendChild(this.mk("circle", {
+        cx:state.path[i].x*CELL, cy:state.path[i].y*CELL, r:3.5,
+        fill: blocked ? "#ef4444" : "#22d3ee", opacity:0.9
+      }));
+    }
+  }
+
+  // Bounding boxes (AI Vision page)
+  this.boxesG.innerHTML = "";
+  if(this.opts.boxes && state.scanRevealed){
+    for(let i=0;i<state.spaces.length;i++){
+      const sp = state.spaces[i];
+      const x = sp.col*CELL+4, y = sp.row*CELL+4, w = sp.w*CELL-8, h = sp.h*CELL-8;
+      let col, lbl;
+      if(sp.status === "occupied"){ col = "#64748b"; lbl = "Vehicle"; }
+      else if(sp.status === "reserved"){ col = "#f59e0b"; lbl = "Reserved"; }
+      else if(sp.unsafe){ col = "#ef4444"; lbl = "Blocked Route"; }
+      else if(state.targetId === sp.id){ col = "#22d3ee"; lbl = "Target Space"; }
+      else { col = "#22c55e"; lbl = "Vacant Space"; }
+
+      const conf = (0.82 + (hash(sp.id) % 15)/100).toFixed(2);
+      this.boxesG.appendChild(this.mk("rect", {
+        x:x, y:y, width:w, height:h, rx:6, fill:"none",
+        stroke:col, "stroke-width":2, opacity:0.9
+      }));
+      const tagW = lbl.length*6.4 + 44;
+      this.boxesG.appendChild(this.mk("rect", {
+        x:x, y:y-16, width:tagW, height:16, rx:4, fill:col, opacity:0.9
+      }));
+      const txt = this.mk("text", {
+        x:x+6, y:y-4.5, "font-size":10.5, fill:"#04141a", "font-weight":700,
+        "font-family":"ui-monospace, monospace"
+      });
+      txt.textContent = lbl + " " + conf;
+      this.boxesG.appendChild(txt);
+    }
+    for(let i=0;i<state.obstacles.length;i++){
+      const o = state.obstacles[i];
+      const r = o.r*CELL;
+      const x = o.x*CELL - r, y = o.y*CELL - r;
+      const col = "#f59e0b";
+      this.boxesG.appendChild(this.mk("rect", {
+        x:x, y:y, width:r*2, height:r*2, rx:4, fill:"none",
+        stroke:col, "stroke-width":2, "stroke-dasharray":"5 4"
+      }));
+      const txt = this.mk("text", {
+        x:x, y:y-5, "font-size":10.5, fill:col,
+        "font-family":"ui-monospace, monospace", "font-weight":700
+      });
+      txt.textContent = (o.type === "pedestrian" ? "Pedestrian" : "Obstacle") +
+                        " " + (0.74 + (hash(o.id) % 20)/100).toFixed(2);
+      this.boxesG.appendChild(txt);
+    }
+  }
+};
+
+LotView.prototype.egoUpdate = function(){
+  const v = state.vehicle;
+  this.egoG.setAttribute("transform",
+    "translate(" + (v.x*CELL) + "," + (v.y*CELL) + ") rotate(" + v.angle.toFixed(2) + ")");
+};
+
+LotView.prototype.scanUpdate = function(dt, active){
+  if(!active){
+    this.scanG.setAttribute("opacity", 0);
+    return;
+  }
+  this.scanX += dt * 800;
+  if(this.scanX > this.W + 70) this.scanX = -70;
+  this.scanG.setAttribute("opacity", 1);
+  this.scanG.setAttribute("transform", "translate(" + this.scanX + ",0)");
+};
+
+/* --------------------------- SIMULATION ENGINE --------------------------- */
+let lastTs = 0;
+
+function raf(ts){
+  requestAnimationFrame(raf);
+  if(!lastTs){ lastTs = ts; return; }
+  const dt = Math.min(0.06, (ts - lastTs) / 1000);
+  lastTs = ts;
+
+  if(state.sim.status === "running") stepSim(dt);
+  else if(state.sim.status === "blocked") stepBlocked(dt);
+
+  for(let i=0;i<activeLots.length;i++){
+    activeLots[i].egoUpdate();
+    const scanning = state.sim.status === "running" &&
+                     STAGES[state.sim.stage] &&
+                     STAGES[state.sim.stage].key === "scan";
+    activeLots[i].scanUpdate(dt, scanning);
+  }
+
+  if(state.sim.status === "running" || state.sim.status === "blocked") updateLiveHud();
+  judgeTick();
+}
+
+function stepSim(dt){
+  const sim = state.sim;
+  const st = STAGES[sim.stage];
+  if(!st) return;
+  sim.stageT += dt;
+
+  if(st.key === "guide"){
+    advanceVehicle(dt);
+    const total = pathLength(state.path);
+    if(!sim.injected && total > 5 && sim.vehicleS > total * 0.42){
+      sim.injected = true;
+      if(injectObstacleAhead()){
+        sim.status = "blocked";
+        sim.blockedT = 0;
+        logEvt("danger", "Obstacle detected on the planned route — maneuver paused.");
+        logAI("A new obstacle appeared on the planned route. The maneuver is paused and the route " +
+              "will be recalculated before the vehicle continues.");
+        speak("Obstacle detected on route. Recalculating.");
+        emit();
+        return;
+      }
+    }
+    if(total > 0 && sim.vehicleS >= total - 0.02){
+      onArrive();
+    }
+  } else if(st.dur !== null && sim.stageT >= st.dur){
+    nextStage();
+  }
+}
+
+function stepBlocked(dt){
+  const sim = state.sim;
+  sim.blockedT += dt;
+  if(sim.blockedT < 1.4) return;
+
+  const sp = state.spaces.find(function(s){ return s.id === state.targetId; });
+  const res = sp ? computeRouteTo(sp) : null;
+
+  if(res && res.path.length > 2){
+    state.path = res.path;
+    sim.vehicleS = 0;
+    sim.status = "running";
+    sim.injected = true;
+    sim.stageT = 0;
+    state.metrics.reroutes++;
+    logEvt("ok", "Alternative safe route calculated (" + res.length.toFixed(1) + " units).");
+    logAI("Rerouted around the new obstacle to space " + state.targetId + ". New route length " +
+          res.length.toFixed(1) + " grid units. The maneuver resumes.");
+    speak("Route recalculated. Resuming.");
+    emit();
+    return;
+  }
+
+  // Try another space
+  const alts = state.scores.filter(function(s){ return s.reachable && s.id !== state.targetId; });
+  for(let i=0;i<alts.length;i++){
+    const altSp = state.spaces.find(function(s){ return s.id === alts[i].id; });
+    if(!altSp) continue;
+    const altRes = computeRouteTo(altSp);
+    if(altRes){
+      state.targetId = altSp.id;
+      state.path = altRes.path;
+      sim.vehicleS = 0;
+      sim.status = "running";
+      sim.injected = true;
+      sim.stageT = 0;
+      state.metrics.reroutes++;
+      logEvt("warn", "Route to previous space blocked. Rerouting to alternative space " + altSp.id + ".");
+      logAI("The original target became unreachable. Switched to the next-best safe space " +
+            altSp.id + " with a route of " + altRes.length.toFixed(1) + " grid units.");
+      speak("Switching to alternative space " + altSp.id + ".");
+      emit();
+      return;
+    }
+  }
+
+  sim.status = "nosafe";
+  logEvt("danger", "No safe parking space found. Wait for the area to clear, then rescan.");
+  logAI("No safe alternative exists right now. The vehicle should wait and the lot should be rescanned.");
+  speak("No safe parking space found.");
+  emit();
+}
+
+function advanceVehicle(dt){
+  const sim = state.sim;
+  if(!state.path.length) return;
+  const total = pathLength(state.path);
+  sim.vehicleS = Math.min(total, sim.vehicleS + SPEED*dt);
+  const p = pointAt(state.path, sim.vehicleS);
+  state.vehicle.x = p.x;
+  state.vehicle.y = p.y;
+  state.vehicle.angle = angleLerp(state.vehicle.angle, p.angle, Math.min(1, dt*9));
+}
+
+function injectObstacleAhead(){
+  const total = pathLength(state.path);
+  const startS = state.sim.vehicleS + 3;
+  for(let s = startS; s < total - 1.5; s += 0.8){
+    const p = pointAt(state.path, s);
+    if(p.y < LANE_TOP + 0.4 || p.y > LANE_BOTTOM + 1.6) continue;
+    const cx = Math.floor(p.x) + 0.5;
+    const cy = Math.floor(p.y) + 0.5;
+    let ok = true;
+    for(let i=0;i<state.obstacles.length;i++){
+      if(Math.hypot(state.obstacles[i].x - cx, state.obstacles[i].y - cy) < 1.6){ ok = false; break; }
+    }
+    if(!ok) continue;
+    state.obstacles.push({
+      id: "OD" + (state.obstacles.length + 1),
+      x: cx, y: cy, r: 0.7, type:"dynamic", label:"Moving obstacle"
+    });
+    return true;
+  }
+  return false;
+}
+
+function onArrive(){
+  const sim = state.sim;
+  const sp = state.spaces.find(function(s){ return s.id === state.targetId; });
+  if(sp){
+    sp.status = "occupied";
+    sp.unsafe = false;
+    state.vehicle.parked = true;
+    state.vehicle.spaceId = sp.id;
+    state.session.spaceId = sp.id;
+  }
+  sim.status = "done";
+  state.metrics.completions++;
+
+  const minutes = 35 + (hash(state.targetId || "x") % 60);
+  state.session.simMinutes = minutes;
+  state.metrics.parkTimes.push(+(minutes/10).toFixed(1));
+  if(state.metrics.parkTimes.length > 12) state.metrics.parkTimes.shift();
+
+  logEvt("ok", "Parking maneuver completed in simulation — vehicle parked in " + (state.targetId || "—") + ".");
+  logAI("Maneuver complete. The vehicle is parked in space " + (state.targetId || "—") +
+        ". Session duration recorded as " + minutes + " simulated minutes.");
+  speak("Parking complete.");
+  emit();
+}
+
+function nextStage(){
+  const sim = state.sim;
+  if(sim.stage >= STAGES.length - 1){ finishRun(); return; }
+  enterStage(sim.stage + 1);
+  emit();
+}
+
+function enterStage(i){
+  const sim = state.sim;
+  sim.stage = i;
+  sim.stageT = 0;
+  const st = STAGES[i];
+  if(!st) return;
+
+  switch(st.key){
+    case "scan":
+      state.scanRevealed = false;
+      for(let k=0;k<state.spaces.length;k++){
+        const s = state.spaces[k];
+        if(s.status === "free" || s.status === "unknown") s.status = "unknown";
+        s.unsafe = false;
+        s.assessment = null;
+      }
+      state.path = [];
+      state.targetId = null;
+      state.recommendedId = null;
+      state.metrics.scans++;
+      logEvt("info", "Scanning parking area…");
+      logAI("Beginning a scan of the parking area. No space is considered safe until its approach lane " +
+            "and route have been checked.");
+      speak("Scanning the parking area.");
+      break;
+
+    case "detect": {
+      state.scanRevealed = true;
+      let vacant = 0;
+      for(let k=0;k<state.spaces.length;k++){
+        const s = state.spaces[k];
+        if(s.status === "unknown") s.status = "free";
+        if(s.status === "free") vacant++;
+      }
+      state.metrics.spacesScanned = state.spaces.length;
+      state.metrics.vacantDetected = vacant;
+      logEvt("ok", vacant + " vacant spaces detected out of " + state.spaces.length + ".");
+      logAI("Detected " + vacant + " vacant spaces out of " + state.spaces.length +
+            ". Reserved and occupied bays are excluded from consideration.");
+      speak(vacant + " vacant spaces detected.");
+      break;
+    }
+
+    case "obstacles":
+      state.metrics.obstaclesIdentified = state.obstacles.length;
+      if(state.obstacles.length){
+        logEvt("warn", state.obstacles.length + " obstacle(s) identified in the driving lane.");
+        logAI("Identified " + state.obstacles.length + " obstacle(s) in the driving lane. " +
+              "These will be treated as blocked cells during route planning.");
+      } else {
+        logEvt("ok", "No obstacles identified in the driving lane.");
+        logAI("No obstacles identified. The driving lane is clear.");
+      }
+      break;
+
+    case "assess":
+      runAssessment();
+      logEvt("info", "Evaluating approach clearance, obstacle proximity and maneuver difficulty…");
+      logAI("For each vacant space, measured: distance from the vehicle, nearest obstacle, " +
+            "approach-lane clearance at three sample points, and maneuver difficulty based on " +
+            "neighbouring occupancy.");
+      break;
+
+    case "select":
+      runRecommendation();
+      break;
+
+    case "plan": {
+      let sp = state.spaces.find(function(s){ return s.id === state.targetId; });
+      let res = sp ? computeRouteTo(sp) : null;
+
+      if(!res){
+        const alts = state.scores.filter(function(s){ return s.reachable && s.id !== state.targetId; });
+        for(let k=0;k<alts.length;k++){
+          const altSp = state.spaces.find(function(s){ return s.id === alts[k].id; });
+          const altRes = altSp ? computeRouteTo(altSp) : null;
+          if(altRes){
+            state.targetId = altSp.id;
+            res = altRes;
+            logEvt("warn", "Preferred space unreachable — switching to " + altSp.id + ".");
+            logAI("The preferred space had no collision-free route, so the next-best safe space " +
+                  altSp.id + " was selected instead.");
+            break;
+          }
+        }
+      }
+
+      if(res){
+        state.path = res.path;
+        sim.vehicleS = 0;
+        logEvt("info", "Collision-aware route planned — " + res.length.toFixed(1) +
+              " units, " + (res.path.length-1) + " waypoints.");
+        logAI("Planned a collision-free route of " + res.length.toFixed(1) +
+              " grid units using A* search with string-pulling smoothing. Blocked cells are excluded.");
+        speak("Route planned. Beginning guidance.");
+      } else {
+        state.path = [];
+        sim.status = "nosafe";
+        logEvt("danger", "No safe parking space found. Wait for the area to clear, then rescan.");
+        logAI("No route could be found. The vehicle should wait and the lot should be rescanned.");
+      }
+      break;
+    }
+
+    case "guide":
+      sim.vehicleS = 0;
+      sim.injected = false;
+      logEvt("info", "Guidance engaged — following planned route.");
+      break;
+
+    case "complete":
+      logEvt("ok", "Completing parking maneuver…");
+      break;
+  }
+}
+
+function finishRun(){
+  state.sim.status = "done";
+  state.metrics.runs++;
+  logEvt("ok", "Demo run finished.");
+  emit();
+}
+
+/* ------------------------------ SIM ACTIONS ------------------------------ */
+function resetSim(keepEvents){
+  state.spaces = freshSpaces();
+  state.obstacles = freshObstacles();
+  state.vehicle = { x:ENTRY.x, y:ENTRY.y, angle:0, isEV:true, parked:false, spaceId:null };
+  state.path = [];
+  state.targetId = null;
+  state.recommendedId = null;
+  state.scores = [];
+  state.scanRevealed = false;
+  state.session = { plate:null, entryClock:null, simMinutes:0, spaceId:null, active:false, receipt:null };
+  state.sim = { status:"idle", stage:-1, stageT:0, vehicleS:0, injected:false, blockedT:0, mode:null };
+  if(!keepEvents){ /* events intentionally preserved across resets for the demo */ }
+  hideJudgeBar();
+  state.judge.active = false;
+  if(detectTimer){ clearTimeout(detectTimer); detectTimer = null; }
+  emit();
+}
+
+function freshSpaces(){
+  return SPACE_DEFS.map(function(d){
+    return {
+      id: d.id, col: d.col, row: d.row, w: d.w, h: d.h, band: d.band,
+      type: SPACE_TYPES[d.id] || "standard",
+      status: DEFAULT_STATUS[d.id] || "free",
+      unsafe: false,
+      assessment: null
+    };
+  });
+}
+function freshObstacles(){
+  if(!state.obstaclesEnabled) return [];
+  return DEFAULT_OBSTACLES.map(function(o){ return Object.assign({}, o); });
+}
+
+function startDemo(){
+  resetSim(true);
+  state.sim.mode = "demo";
+  state.sim.status = "running";
+  enterStage(0);
+  emit();
+}
+
+function pauseDemo(){
+  if(state.sim.status === "running"){
+    state.sim.status = "paused";
+    logEvt("info", "Simulation paused.");
+  } else if(state.sim.status === "paused"){
+    state.sim.status = "running";
+    logEvt("info", "Simulation resumed.");
+  }
+  emit();
+}
+
+function rescan(){
+  state.obstacles = freshObstacles();
+  state.path = [];
+  state.sim.status = "idle";
+  state.sim.stage = -1;
+  state.sim.stageT = 0;
+  state.sim.vehicleS = 0;
+  state.sim.injected = false;
+  state.vehicle = { x:ENTRY.x, y:ENTRY.y, angle:0, isEV:true, parked:false, spaceId:null };
+  state.targetId = null;
+  state.recommendedId = null;
+  state.scanRevealed = false;
+  for(let i=0;i<state.spaces.length;i++){
+    const s = state.spaces[i];
+    if(s.status === "free") s.status = "unknown";
+    s.unsafe = false;
+    s.assessment = null;
+  }
+  logEvt("info", "Parking lot rescanned. Previous detections cleared.");
+  emit();
+}
+
+function toggleObstacles(){
+  state.obstaclesEnabled = !state.obstaclesEnabled;
+  state.obstacles = freshObstacles();
+  state.path = [];
+  state.sim.status = "idle";
+  state.sim.stage = -1;
+  state.targetId = null;
+  state.recommendedId = null;
+  logEvt("info", state.obstaclesEnabled ? "Obstacles enabled." : "Obstacles disabled (clear lane).");
+  emit();
+}
+
+/** "Find me a spot" — full pipeline in one action. */
+function findMeASpot(){
+  if(!state.scanRevealed){
+    state.scanRevealed = true;
+    for(let i=0;i<state.spaces.length;i++){
+      if(state.spaces[i].status === "unknown") state.spaces[i].status = "free";
+    }
+  }
+  const ranked = runRecommendation();
+  if(!ranked){
+    state.sim.status = "nosafe";
+    emit();
+    return;
+  }
+  const sp = state.spaces.find(function(s){ return s.id === state.targetId; });
+  if(!sp) return;
+  const res = computeRouteTo(sp);
+  if(!res){
+    state.sim.status = "nosafe";
+    logEvt("danger", "No collision-free route available to the recommended space.");
+    emit();
+    return;
+  }
+  state.path = res.path;
+  state.sim.status = "running";
+  state.sim.stage = STAGES.findIndex(function(s){ return s.key === "guide"; });
+  state.sim.stageT = 0;
+  state.sim.vehicleS = 0;
+  state.sim.injected = false;
+  logEvt("info", "Find-me-a-spot: guiding to " + sp.id + ".");
+  speak("Guiding to space " + sp.id + ".");
+  emit();
+}
+
+/** Simulate a vehicle entering the lot. */
+function simulateEntry(){
+  if(!state.session.active){
+    state.session.plate = mkPlate();
+    state.session.entryClock = nowStr();
+    state.session.active = true;
+    state.session.receipt = null;
+    state.session.simMinutes = 0;
+    state.vehicle.parked = false;
+    state.vehicle.spaceId = null;
+    state.vehicle.x = ENTRY.x;
+    state.vehicle.y = ENTRY.y;
+    state.vehicle.angle = 0;
+    state.obstacles = freshObstacles();
+    logEvt("info", "Vehicle " + state.session.plate + " entered the parking lot.");
+    logAI("Vehicle " + state.session.plate + " entered the lot. An EV with standard parking priority " +
+          "was detected, so EV bays receive a small preference bonus.");
+    speak("Vehicle " + state.session.plate + " entered the lot.");
+  }
+  emit();
+}
+
+/** Simulate the vehicle exiting and generate a bill. */
+function simulateExit(){
+  if(!state.session.active){
+    logEvt("warn", "No active parking session to bill.");
+    emit();
+    return;
+  }
+  if(!state.vehicle.parked){
+    // No parked vehicle — bill directly using the recorded simulated duration.
+    if(!state.session.simMinutes) state.session.simMinutes = 45;
+    state.session.receipt = computeBill();
+    state.session.active = false;
+    logEvt("ok", "Session closed for " + state.session.plate + ". Bill generated.");
+    logAI("Session closed. Billing computed from the simulated parking duration.");
+    speak("Session closed. Bill generated.");
+    emit();
+    return;
+  }
+
+  const route = computeExitRoute();
+  if(!route){
+    logEvt("warn", "Exit route blocked — vehicle cannot leave right now.");
+    emit();
+    return;
+  }
+  state.path = route.path;
+  state.sim.vehicleS = 0;
+  state.sim.stage = STAGES.findIndex(function(s){ return s.key === "guide"; });
+  state.sim.stageT = 0;
+  state.sim.status = "running";
+  state.sim.injected = true;
+  state.sim.mode = "exit";
+  // Free the space as the vehicle leaves
+  const sp = state.spaces.find(function(s){ return s.id === state.vehicle.spaceId; });
+  if(sp){ sp.status = "free"; sp.unsafe = false; }
+  logEvt("info", "Vehicle " + state.session.plate + " is leaving the lot.");
+  logAI("Exit route planned from the parked position to the exit gate.");
+  speak("Vehicle leaving the lot.");
+  emit();
+}
+
+function finishExit(){
+  state.vehicle.parked = false;
+  state.vehicle.spaceId = null;
+  state.vehicle.x = EXIT.x;
+  state.vehicle.y = EXIT.y;
+  state.session.receipt = computeBill();
+  state.session.active = false;
+  state.sim.status = "idle";
+  state.sim.mode = null;
+  state.path = [];
+  logEvt("ok", "Vehicle exited. Bill generated for " + state.session.plate + ".");
+  logAI("Billing complete. Total charged: " + CURRENCY + state.session.receipt.total.toFixed(2) +
+        (state.session.receipt.note ? " (" + state.session.receipt.note + ")" : "") + ".");
+  speak("Billing complete.");
+  showReceipt();
+  emit();
+}
+
+function computeBill(){
+  const minutes = state.session.simMinutes || 45;
+  const hours = Math.max(1, Math.ceil(minutes / 60));
+  const base = 30;
+  const rate = 20 * hours;
+  const subtotal = base + rate;
+
+  const sp = state.spaces.find(function(s){ return s.id === state.session.spaceId; });
+  let discount = 0, note = "";
+  if(sp && sp.type === "ev" && state.vehicle.isEV){
+    discount = subtotal * 0.10;
+    note = "EV charging-space discount (10%)";
+  }
+  if(sp && sp.type === "disabled"){
+    discount = subtotal;
+    note = "Accessible space — no charge";
+  }
+  const total = Math.max(0, subtotal - discount);
+
+  state.metrics.revenue += total;
+  return {
+    plate: state.session.plate,
+    entry: state.session.entryClock || "—",
+    exit: nowStr(),
+    minutes: minutes,
+    hours: hours,
+    base: base,
+    rate: rate,
+    subtotal: subtotal,
+    discount: discount,
+    total: total,
+    note: note,
+    space: state.session.spaceId || "—"
+  };
+}
+
+/* ------------------------------ SPACE CLICK ------------------------------ */
+function onSpaceClick(id){
+  const sp = state.spaces.find(function(s){ return s.id === id; });
+  if(!sp) return;
+  const a = sp.assessment;
+
+  const statusLabel = sp.status === "occupied" ? "Occupied"
+                    : sp.status === "reserved" ? "Reserved"
+                    : sp.unsafe ? "Unsafe / blocked approach"
+                    : "Available";
+  const statusCls = sp.status === "occupied" ? ""
+                  : sp.status === "reserved" ? "warn"
+                  : sp.unsafe ? "bad" : "ok";
+
+  const typeLabel = sp.type === "ev" ? "⚡ EV charging bay"
+                  : sp.type === "disabled" ? "♿ Accessible bay"
+                  : "Standard bay";
+
+  let html = '<div class="row" style="justify-content:space-between;margin-bottom:14px">' +
+    '<div><h2 style="margin:0">Space ' + sp.id + '</h2>' +
+    '<p class="small muted" style="margin:2px 0 0">' + typeLabel + ' · ' +
+    (sp.band === "top" ? "Row A (top band)" : "Row B (bottom band)") + '</p></div>' +
+    '<span class="badge ' + statusCls + '">' + statusLabel + '</span></div>';
+
+  if(sp.status === "occupied"){
+    html += '<p class="small muted">This space is currently occupied by a parked vehicle. ' +
+            'No safety assessment is performed on occupied bays.</p>';
+  } else if(sp.status === "reserved"){
+    html += '<p class="small muted">This space is reserved. The recommendation engine excludes it ' +
+            'from consideration for general vehicles.</p>';
+  } else if(a){
+    html += '<div class="kv"><span class="k">Estimated route length</span><span class="v">' +
+      (a.reachable ? a.distance.toFixed(1) + " units" : "unreachable") + '</span></div>';
+    html += '<div class="kv"><span class="k">Nearest obstacle</span><span class="v">' +
+      (isFinite(a.minObs) ? a.minObs.toFixed(1) + " units" : "none detected") + '</span></div>';
+    html += '<div class="kv"><span class="k">Approach clearance</span><span class="v">' +
+      Math.round(a.clearance*100) + '%</span></div>';
+    html += '<div class="kv"><span class="k">Maneuver difficulty</span><span class="v">' +
+      Math.round(a.difficulty*100) + '%</span></div>';
+    html += '<div class="kv"><span class="k">Safety assessment</span><span class="v">' +
+      (a.reachable && a.clearance >= 0.34 ? "Suitable" : "Not suitable") + '</span></div>';
+    if(a.score != null)
+      html += '<div class="kv"><span class="k">Recommendation score</span><span class="v">' +
+        a.score.toFixed(1) + " / 100</span></div>";
+  } else {
+    html += '<p class="small muted">Run a scan or press "Find me a spot" to assess this space.</p>';
+  }
+
+  html += '<div class="row" style="margin-top:16px">' +
+    ((sp.status === "free" && !sp.unsafe)
+      ? '<button class="btn btn-primary" onclick="selectSpace(\'' + sp.id + '\')">Select as target</button>'
+      : "") +
+    '<button class="btn btn-ghost" onclick="closeModal()">Close</button></div>';
+
+  openModal(html);
+}
+
+function selectSpace(id){
+  const sp = state.spaces.find(function(s){ return s.id === id; });
+  if(!sp || sp.status !== "free") return;
+  state.targetId = id;
+  const res = computeRouteTo(sp);
+  if(res){
+    state.path = res.path;
+    state.sim.vehicleS = 0;
+    logEvt("info", "Target space set to " + id + ".");
+    logAI("User selected space " + id + " manually. Route recalculated — " +
+          res.length.toFixed(1) + " grid units.");
+  } else {
+    state.path = [];
+    logEvt("warn", "No collision-free route to " + id + " from the current position.");
+    logAI("Space " + id + " has no collision-free route from the current position.");
+  }
+  closeModal();
+  emit();
+}
+
+/* ------------------------------- MODAL ----------------------------------- */
+function openModal(html){
+  $("#modalBody").innerHTML = html;
+  $("#modal").classList.add("show");
+}
+function closeModal(){ $("#modal").classList.remove("show"); }
+function showReceipt(){
+  const r = state.session.receipt;
+  if(!r) return;
+  const html =
+    '<h2 style="margin-bottom:2px">Parking Receipt</h2>' +
+    '<p class="small muted" style="margin-top:0">Auto-generated by the simulated billing module</p>' +
+    '<div class="receipt" style="margin-top:14px">' +
+      '<div style="text-align:center;margin-bottom:12px">' +
+        '<div class="plate">' + r.plate + '</div>' +
+      '</div>' +
+      '<div class="r-row"><span>Space</span><span>' + r.space + '</span></div>' +
+      '<div class="r-row"><span>Entry</span><span>' + r.entry + '</span></div>' +
+      '<div class="r-row"><span>Exit</span><span>' + r.exit + '</span></div>' +
+      '<div class="r-row"><span>Duration (simulated)</span><span>' + r.minutes + ' min</span></div>' +
+      '<div class="dash"></div>' +
+      '<div class="r-row"><span>Base fee</span><span>' + CURRENCY + r.base.toFixed(2) + '</span></div>' +
+      '<div class="r-row"><span>Time charge (' + r.hours + ' h)</span><span>' + CURRENCY + r.rate.toFixed(2) + '</span></div>' +
+      '<div class="r-row"><span>Subtotal</span><span>' + CURRENCY + r.subtotal.toFixed(2) + '</span></div>' +
+      (r.discount > 0
+        ? '<div class="r-row" style="color:#86efac"><span>Discount</span><span>−' + CURRENCY + r.discount.toFixed(2) + '</span></div>'
+        : "") +
+      '<div class="r-tot"><span>TOTAL</span><span>' + CURRENCY + r.total.toFixed(2) + '</span></div>' +
+      (r.note ? '<p class="tiny dim" style="text-align:center;margin-top:10px">' + r.note + '</p>' : "") +
+    '</div>' +
+    '<button class="btn" style="margin-top:14px" onclick="closeModal()">Close</button>';
+  openModal(html);
+}
+
+/* ------------------------------- CHART HELPERS --------------------------- */
+function barChart(data, opts){
+  opts = opts || {};
+  const w = 520, h = opts.height || 210, pad = { l:38, r:14, t:20, b:34 };
+  const iw = w-pad.l-pad.r, ih = h-pad.t-pad.b;
+  const max = Math.max(1, Math.max.apply(null, data.map(function(d){ return d.value; })));
+  const bw = iw / data.length;
+  let s = '<svg viewBox="0 0 ' + w + ' ' + h + '" class="chart">';
+  for(let i=0;i<=4;i++){
+    const y = pad.t + ih*i/4;
+    s += '<line x1="' + pad.l + '" y1="' + y + '" x2="' + (w-pad.r) + '" y2="' + y + '" stroke="#16222e" stroke-width="1"/>';
+    s += '<text x="' + (pad.l-7) + '" y="' + (y+4) + '" text-anchor="end" class="ct">' +
+         Math.round(max*(1-i/4)) + '</text>';
+  }
+  data.forEach(function(d,i){
+    const bh = ih * (d.value/max);
+    const x = pad.l + i*bw + bw*0.2;
+    const barW = bw*0.6;
+    s += '<rect x="' + x + '" y="' + (pad.t+ih-bh) + '" width="' + barW + '" height="' + Math.max(bh,2) +
+         '" rx="3" fill="' + (d.color || "#22d3ee") + '" opacity="0.85"/>';
+    if(data.length <= 12){
+      s += '<text x="' + (x+barW/2) + '" y="' + (pad.t+ih+16) + '" text-anchor="middle" class="ct">' + d.label + '</text>';
+    }
+    if(d.value > 0 && data.length <= 14){
+      s += '<text x="' + (x+barW/2) + '" y="' + (pad.t+ih-bh-5) + '" text-anchor="middle" class="cv">' + d.value + '</text>';
+    }
+  });
+  return s + '</svg>';
+}
+
+function donut(data){
+  const size = 180, cx = size/2, cy = size/2, r = 66, sw = 22;
+  const total = data.reduce(function(a,b){ return a + b.value; }, 0) || 1;
+  let s = '<svg viewBox="0 0 ' + size + ' ' + size + '" class="chart" style="max-width:190px;margin:0 auto">';
+  if(data.length === 1){
+    s += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + data[0].color +
+         '" stroke-width="' + sw + '"/>';
+  } else {
+    let a0 = -Math.PI/2;
+    data.forEach(function(d){
+      const a1 = a0 + (d.value/total)*Math.PI*2;
+      if(d.value > 0 && (a1-a0) > 0.0001){
+        const large = (a1-a0) > Math.PI ? 1 : 0;
+        const x0 = cx + r*Math.cos(a0), y0 = cy + r*Math.sin(a0);
+        const x1 = cx + r*Math.cos(a1), y1 = cy + r*Math.sin(a1);
+        s += '<path d="M ' + x0 + ' ' + y0 + ' A ' + r + ' ' + r + ' 0 ' + large + ' 1 ' + x1 + ' ' + y1 +
+             '" fill="none" stroke="' + d.color + '" stroke-width="' + sw + '"/>';
+      }
+      a0 = a1;
+    });
+  }
+  s += '<text x="' + cx + '" y="' + (cy+2) + '" text-anchor="middle" class="donut-num">' + total + '</text>';
+  s += '<text x="' + cx + '" y="' + (cy+20) + '" text-anchor="middle" class="ct">picks</text>';
+  return s + '</svg>';
+}
+
+function lineChart(data){
+  const w = 520, h = 200, pad = { l:38, r:14, t:20, b:32 };
+  const iw = w-pad.l-pad.r, ih = h-pad.t-pad.b;
+  const max = Math.max(1, Math.max.apply(null, data.map(function(d){ return d.value; })));
+  const step = data.length > 1 ? iw/(data.length-1) : 0;
+  let s = '<svg viewBox="0 0 ' + w + ' ' + h + '" class="chart">';
+  for(let i=0;i<=4;i++){
+    const y = pad.t + ih*i/4;
+    s += '<line x1="' + pad.l + '" y1="' + y + '" x2="' + (w-pad.r) + '" y2="' + y + '" stroke="#16222e" stroke-width="1"/>';
+    s += '<text x="' + (pad.l-7) + '" y="' + (y+4) + '" text-anchor="end" class="ct">' + (max*(1-i/4)).toFixed(0) + '</text>';
+  }
+  const pts = data.map(function(d,i){
+    return [pad.l + i*step, pad.t + ih - ih*(d.value/max)];
+  });
+  s += '<polyline points="' + pts.map(function(p){ return p[0]+","+p[1]; }).join(" ") +
+       '" fill="none" stroke="#22d3ee" stroke-width="2.5" stroke-linejoin="round"/>';
+  pts.forEach(function(p,i){
+    s += '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="3.5" fill="#0b121a" stroke="#22d3ee" stroke-width="2"/>';
+    s += '<text x="' + p[0] + '" y="' + (pad.t+ih+16) + '" text-anchor="middle" class="ct">' + data[i].label + '</text>';
+  });
+  return s + '</svg>';
+}
+
+/* -------------------------------- ICONS ---------------------------------- */
+const ICONS = {
+  grid:  '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/>',
+  car:   '<path d="M5 17h14M6 17V10l2-4.5h8L18 10v7"/><circle cx="7.6" cy="17.6" r="1.5"/><circle cx="16.4" cy="17.6" r="1.5"/>',
+  eye:   '<path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="2.6"/>',
+  route: '<circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="5" r="2.5"/><path d="M8.2 17.4 15.8 6.6"/>',
+  chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  layers:'<path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3 13l9 5 9-5"/>',
+  info:  '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+  play:  '<path d="M7 4.5v15l13-7.5-13-7.5z"/>',
+  reset: '<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/>',
+  radar: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12 19 6"/>'
+};
+function icon(name, size){
+  const s = size || 17;
+  return '<svg viewBox="0 0 24 24" width="' + s + '" height="' + s + '" fill="none" stroke="currentColor" ' +
+         'stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + (ICONS[name] || "") + '</svg>';
+}
+
+/* ------------------------------- NAVIGATION ------------------------------ */
+const NAV = [
+  { id:"overview",  label:"Overview",          icon:"grid",   sub:"Autonomous Parking Command Center" },
+  { id:"live",      label:"Live Parking",      icon:"car",    sub:"Interactive parking simulator" },
+  { id:"vision",    label:"AI Vision",         icon:"eye",    sub:"Simulated perception pipeline" },
+  { id:"route",     label:"Route Planner",     icon:"route",  sub:"A* collision-aware path planning" },
+  { id:"analytics", label:"Analytics",         icon:"chart",  sub:"Simulated demonstration metrics" },
+  { id:"how",       label:"How It Works",      icon:"layers", sub:"Sense → Perceive → Assess → Decide → Plan → Guide" },
+  { id:"about",     label:"About the Project", icon:"info",   sub:"Innovation, technology stack and limitations" }
+];
+
+function buildNav(){
+  const nav = $("#nav");
+  nav.innerHTML = NAV.map(function(n){
+    return '<div class="nav-item" data-page="' + n.id + '" title="' + n.sub + '">' +
+      icon(n.icon) + '<span>' + n.label + '</span></div>';
+  }).join("");
+  nav.addEventListener("click", function(e){
+    const item = e.target.closest ? e.target.closest(".nav-item") : null;
+    if(!item) return;
+    go(item.getAttribute("data-page"));
+    $("#sidebar").classList.remove("open");
+  });
+}
+
+function go(id){
+  const def = pages[id];
+  if(!def) return;
+  currentPage = id;
+  $$(".nav-item").forEach(function(n){
+    n.classList.toggle("active", n.getAttribute("data-page") === id);
+  });
+  const meta = NAV.find(function(n){ return n.id === id; });
+  if(meta){
+    $("#pageTitle").textContent = meta.label;
+    $("#pageSub").textContent = meta.sub;
+  }
+  const content = $("#content");
+  content.innerHTML = def.html();
+  activeLots = [];
+  def.mount(content);
+  def.update();
+  for(let i=0;i<activeLots.length;i++) activeLots[i].update();
+  updateTopbar();
+  window.scrollTo(0, 0);
+}
+
+/* ------------------------------- EMIT ------------------------------------ */
+function emit(){
+  const def = pages[currentPage];
+  if(def && def.update) def.update();
+  for(let i=0;i<activeLots.length;i++) activeLots[i].update();
+  updateTopbar();
+}
+
+function updateTopbar(){
+  const el = $("#sysStatus");
+  if(!el) return;
+  const map = {
+    idle:    ["IDLE", ""],
+    running: ["SIMULATION RUNNING", "running"],
+    paused:  ["PAUSED", "paused"],
+    blocked: ["ROUTE BLOCKED — RECALCULATING", "blocked"],
+    done:    ["MANEUVER COMPLETE", "done"],
+    nosafe:  ["NO SAFE SPACE FOUND", "nosafe"]
+  };
+  const v = map[state.sim.status] || map.idle;
+  el.textContent = v[0];
+  el.className = "status-pill " + v[1];
+}
+
+function updateLiveHud(){
+  if(currentPage !== "live") return;
+  const def = pages.live;
+  if(def && def.hud) def.hud();
+}
+
+/* ------------------------------ MODAL BINDINGS --------------------------- */
+$("#modal").addEventListener("click", function(e){ if(e.target.id === "modal") closeModal(); });
+document.addEventListener("keydown", function(e){ if(e.key === "Escape") closeModal(); });
+
+/* ==========================================================================
+   PAGES
+   ========================================================================== */
+const pages = {};
+
+function stat(k, v, s, cls){
+  return '<div class="stat ' + (cls || "") + '"><div class="k">' + k + '</div>' +
+         '<div class="v">' + v + '</div><div class="s">' + s + '</div></div>';
+}
+
+/* ------------------------------- OVERVIEW -------------------------------- */
+pages.overview = {
+  html: function(){
+    return `
+    <section class="card" style="margin-bottom:15px;background:linear-gradient(120deg,#0d1721,#0b121a 55%,#0c1a22)">
+      <div style="display:flex;gap:22px;flex-wrap:wrap;align-items:center;justify-content:space-between">
+        <div style="max-width:660px;min-width:0">
+          <span class="badge info" style="margin-bottom:10px">SIMULATED PROTOTYPE · INTELLIGENT SYSTEMS &amp; AUTONOMOUS COMPUTING</span>
+          <h2>Autonomous Parking Command Center</h2>
+          <p class="muted" style="margin:4px 0 6px;font-size:13.5px">
+            <em>"See the Space. Predict the Risk. Park with Confidence."</em>
+          </p>
+          <p class="small dim" style="margin:0 0 14px">
+            An intelligent parking assistant that detects, evaluates, and guides vehicles toward safer parking.
+          </p>
+          <div class="row">
+            <button class="btn btn-primary" id="btnStartDemo">${icon("play",14)} Start Parking Demo</button>
+            <button class="btn" id="btnFind">Find me a spot</button>
+            <button class="btn" id="btnJudge2">▶ Run Judge Demo</button>
+            <span class="mode-chip">DEMO MODE — SIMULATED DATA</span>
+          </div>
+        </div>
+        <div style="min-width:210px">
+          <div class="kv"><span class="k">Simulation engine</span><span class="v">Grid + A*</span></div>
+          <div class="kv"><span class="k">Perception</span><span class="v">Simulated only</span></div>
+          <div class="kv"><span class="k">Vehicle control</span><span class="v">Not implemented</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid g3" id="ovStats" style="margin-bottom:15px"></section>
+
+    <section class="grid" style="grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);margin-bottom:15px">
+      <div class="card tight">
+        <div class="card-head">
+          <h3>Parking Lot — Top-Down View</h3>
+          <span class="hint">Click any space for details</span>
+        </div>
+        <div class="lot-wrap"><svg class="lot" id="ovLot"></svg></div>
+        <div class="row tiny dim" style="margin-top:10px;gap:14px">
+          <span><span style="display:inline-block;width:9px;height:9px;background:#22c55e;border-radius:2px"></span> Free</span>
+          <span><span style="display:inline-block;width:9px;height:9px;background:#475569;border-radius:2px"></span> Occupied</span>
+          <span><span style="display:inline-block;width:9px;height:9px;background:#f59e0b;border-radius:2px"></span> Reserved</span>
+          <span><span style="display:inline-block;width:9px;height:9px;background:#22d3ee;border-radius:2px"></span> EV</span>
+          <span><span style="display:inline-block;width:9px;height:9px;background:#8b5cf6;border-radius:2px"></span> Accessible</span>
+          <span><span style="display:inline-block;width:9px;height:9px;background:#ef4444;border-radius:2px"></span> Unsafe</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>Live Activity</h3><span class="hint">simulated events</span></div>
+        <div class="feed" id="ovFeed"></div>
+      </div>
+    </section>
+
+    <section class="grid g4" id="ovImpact"></section>`;
+  },
+
+  mount: function(root){
+    const lot = new LotView(root.querySelector("#ovLot"), { interactive:true });
+    activeLots.push(lot);
+
+    root.querySelector("#btnStartDemo").addEventListener("click", function(){
+      go("live");
+      setTimeout(startDemo, 60);
+    });
+    root.querySelector("#btnFind").addEventListener("click", function(){
+      go("live");
+      setTimeout(findMeASpot, 60);
+    });
+    root.querySelector("#btnJudge2").addEventListener("click", startJudgeDemo);
+  },
+
+  update: function(){
+    const root = $("#content");
+    if(!root) return;
+    const statsEl = root.querySelector("#ovStats");
+    if(!statsEl) return;
+
+    const total = state.spaces.length;
+    const avail = state.spaces.filter(function(x){ return x.status === "free" && !x.unsafe && state.scanRevealed; }).length;
+    const occ = state.spaces.filter(function(x){ return x.status === "occupied"; }).length;
+    const res = state.spaces.filter(function(x){ return x.status === "reserved"; }).length;
+    const obs = state.obstacles.length;
+    const rec = state.recommendedId || "—";
+    const recScore = state.scores.find(function(x){ return x.id === state.recommendedId; });
+
+    let safe = ["NOT SCANNED", "gray"];
+    if(state.sim.status === "nosafe") safe = ["NO SAFE SPACE", "red"];
+    else if(state.scanRevealed) safe = avail > 0 ? ["SAFE OPTIONS AVAILABLE", "green"] : ["LOT FULL", "amber"];
+
+    statsEl.innerHTML =
+      stat("Total parking spaces", total, "12 spaces · rows A & B", "cyan") +
+      stat("Available spaces", state.scanRevealed ? avail : "—",
+           state.scanRevealed ? "free & approach-clear" : "run a scan", "green") +
+      stat("Occupied spaces", occ, "detected vehicles", "gray") +
+      stat("Reserved spaces", res, "excluded from selection", "amber") +
+      stat("Detected obstacles", obs, state.obstaclesEnabled ? "simulated obstacles" : "obstacles disabled", "amber") +
+      stat("Recommended spot", rec,
+           recScore ? "score " + recScore.score.toFixed(1) + " / 100" : "pending assessment", "blue") +
+      stat("Parking safety status", safe[0], "based on clearance + route", safe[1]) +
+      stat("Simulation state", state.sim.status.toUpperCase(), "engine status", "violet");
+
+    const feed = root.querySelector("#ovFeed");
+    if(feed){
+      feed.innerHTML = state.events.length
+        ? state.events.slice(0,16).map(function(l){
+            return '<div class="feed-item ' + l.type + '"><span class="dot"></span><div>' +
+              '<div class="feed-text">' + l.text + '</div>' +
+              '<div class="feed-time">' + l.time + '</div></div></div>';
+          }).join("")
+        : '<div class="empty">No activity yet.<br>Start the parking demo to see simulated events.</div>';
+    }
+
+    const imp = root.querySelector("#ovImpact");
+    if(imp){
+      const m = state.metrics;
+      imp.innerHTML =
+        stat("Time saved", m.timeSavedMin.toFixed(1) + " min", "vs. manual searching (simulated)", "green") +
+        stat("Fuel saved", m.fuelSavedL.toFixed(2) + " L", "idling avoided (simulated)", "cyan") +
+        stat("CO₂ reduced", m.co2SavedKg.toFixed(2) + " kg", "estimated (simulated)", "blue") +
+        stat("Completed runs", m.completions, "successful parkings", "violet");
+    }
+  }
+};
+
+/* ------------------------------ LIVE PARKING ----------------------------- */
+pages.live = {
+  html: function(){
+    return `
+    <section class="card tight" style="margin-bottom:15px">
+      <div class="row">
+        <button class="btn btn-primary" id="btnStart">${icon("play",14)} Start Demo</button>
+        <button class="btn" id="btnFindSpot">Find me a spot</button>
+        <button class="btn" id="btnPause">⏸ Pause / Resume</button>
+        <button class="btn" id="btnReset">${icon("reset",14)} Reset Simulation</button>
+        <button class="btn" id="btnRescan">${icon("radar",14)} Rescan Lot</button>
+        <button class="btn" id="btnObst">Toggle Obstacles</button>
+        <button class="btn" id="btnVoice">🔈 Voice</button>
+        <span class="badge" id="obstState">Obstacles: ON</span>
+      </div>
+    </section>
+
+    <section class="grid" style="grid-template-columns:minmax(0,1.65fr) minmax(0,1fr)">
+      <div style="min-width:0">
+        <div class="card tight">
+          <div class="card-head">
+            <h3>Interactive Parking Simulator</h3>
+            <span class="hint">Click any space to inspect / select</span>
+          </div>
+          <div class="lot-wrap"><svg class="lot" id="liveLot"></svg></div>
+          <div class="progress"><div id="liveProgress"></div></div>
+          <div class="row" style="justify-content:space-between">
+            <span class="tiny dim" id="liveStageText">Idle — press Start Demo</span>
+            <span class="tiny dim" id="liveVehText">Vehicle: (1.5, 7.5)</span>
+          </div>
+          <div class="row tiny dim" style="margin-top:10px;gap:14px">
+            <span><span style="display:inline-block;width:9px;height:9px;background:#22c55e;border-radius:2px"></span> Free</span>
+            <span><span style="display:inline-block;width:9px;height:9px;background:#475569;border-radius:2px"></span> Occupied</span>
+            <span><span style="display:inline-block;width:9px;height:9px;background:#f59e0b;border-radius:2px"></span> Reserved</span>
+            <span><span style="display:inline-block;width:9px;height:9px;background:#22d3ee;border-radius:2px"></span> EV</span>
+            <span><span style="display:inline-block;width:9px;height:9px;background:#8b5cf6;border-radius:2px"></span> Accessible</span>
+            <span><span style="display:inline-block;width:9px;height:9px;background:#ef4444;border-radius:2px"></span> Unsafe</span>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:15px">
+          <div class="card-head"><h3>Detected Spaces</h3><span class="hint">simulated detections</span></div>
+          <div id="liveTable"></div>
+        </div>
+      </div>
+
+      <div style="min-width:0">
+        <div class="card">
+          <div class="card-head"><h3>Maneuver Stages</h3></div>
+          <div id="liveStages"></div>
+        </div>
+
+        <div class="card" style="margin-top:15px">
+          <div class="card-head"><h3>Target Space</h3></div>
+          <div id="liveTarget"></div>
+        </div>
+
+        <div class="card" style="margin-top:15px">
+          <div class="card-head"><h3>Vehicle &amp; Billing</h3></div>
+          <div id="liveBilling"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid g2" style="margin-top:15px">
+      <div class="card">
+        <div class="card-head"><h3>AI Decision Log</h3><span class="hint">plain-language reasoning</span></div>
+        <div class="feed" id="liveAI" style="max-height:300px"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Event Log</h3><span class="hint">simulated events</span></div>
+        <div class="feed" id="liveFeed" style="max-height:300px"></div>
+      </div>
+    </section>`;
+  },
+
+  mount: function(root){
+    const lot = new LotView(root.querySelector("#liveLot"), { interactive:true });
+    activeLots.push(lot);
+
+    root.querySelector("#btnStart").addEventListener("click", startDemo);
+    root.querySelector("#btnFindSpot").addEventListener("click", findMeASpot);
+    root.querySelector("#btnPause").addEventListener("click", pauseDemo);
+    root.querySelector("#btnReset").addEventListener("click", function(){
+      resetSim(true);
+      logEvt("info", "Simulation reset.");
+      emit();
+    });
+    root.querySelector("#btnRescan").addEventListener("click", rescan);
+    root.querySelector("#btnObst").addEventListener("click", toggleObstacles);
+    root.querySelector("#btnVoice").addEventListener("click", toggleVoice);
+
+    this.hud = function(){
+      const sim = state.sim;
+      const st = STAGES[sim.stage];
+      const bar = root.querySelector("#liveProgress");
+      const txt = root.querySelector("#liveStageText");
+      if(bar){
+        let pct = 0;
+        if(st){
+          if(st.dur === null){
+            const total = pathLength(state.path) || 1;
+            pct = (sim.vehicleS/total)*100;
+          } else {
+            pct = Math.min(100, (sim.stageT/st.dur)*100);
+          }
+        } else if(sim.status === "done") pct = 100;
+        bar.style.width = clamp(pct,0,100) + "%";
+      }
+      if(txt){
+        txt.textContent = st
+          ? ("Stage " + (sim.stage+1) + " / 8 — " + st.label)
+          : (sim.status === "done" ? "Maneuver complete" : "Idle — press Start Demo");
+      }
+      const vt = root.querySelector("#liveVehText");
+      if(vt) vt.textContent = "Vehicle: (" + state.vehicle.x.toFixed(1) + ", " + state.vehicle.y.toFixed(1) + ")";
+    };
+  },
+
+  update: function(){
+    const root = $("#content");
+    if(!root) return;
+
+    const obstState = root.querySelector("#obstState");
+    if(obstState) obstState.textContent = "Obstacles: " + (state.obstaclesEnabled ? "ON" : "OFF");
+
+    const voiceBtn = root.querySelector("#btnVoice");
+    if(voiceBtn){
+      voiceBtn.classList.toggle("on", state.voice);
+      voiceBtn.textContent = state.voice ? "🔊 Voice ON" : "🔈 Voice";
+    }
+
+    const stagesEl = root.querySelector("#liveStages");
+    if(stagesEl){
+      stagesEl.innerHTML = STAGES.map(function(s,i){
+        const cls = state.sim.stage === i ? "active" : (state.sim.stage > i ? "done" : "");
+        return '<div class="stage ' + cls + '"><span class="num">' + (i+1) + '</span><span>' + s.label + '</span></div>';
+      }).join("");
+    }
+
+    const tEl = root.querySelector("#liveTarget");
+    if(tEl){
+      const sp = state.spaces.find(function(s){ return s.id === state.targetId; });
+      const a = sp ? sp.assessment : null;
+      if(!sp){
+        tEl.innerHTML = '<div class="empty">No target space selected yet.</div>';
+      } else {
+        tEl.innerHTML =
+          '<div class="row" style="justify-content:space-between;margin-bottom:8px">' +
+            '<span class="mono" style="font-size:18px;font-weight:700;color:#67e8f9">' + sp.id + '</span>' +
+            '<span class="badge ' + (state.sim.status === "blocked" ? "bad" : "info") + '">' +
+              (state.sim.status === "blocked" ? "ROUTE BLOCKED" : "TARGET") + '</span>' +
+          '</div>' +
+          '<div class="kv"><span class="k">Bay type</span><span class="v">' +
+            (sp.type === "ev" ? "⚡ EV" : sp.type === "disabled" ? "♿ Accessible" : "Standard") + '</span></div>' +
+          '<div class="kv"><span class="k">Route length</span><span class="v">' +
+            (a && a.reachable ? a.distance.toFixed(1) + " units" : "—") + '</span></div>' +
+          '<div class="kv"><span class="k">Approach clearance</span><span class="v">' +
+            (a ? Math.round(a.clearance*100) + "%" : "—") + '</span></div>' +
+          '<div class="kv"><span class="k">Maneuver difficulty</span><span class="v">' +
+            (a ? Math.round(a.difficulty*100) + "%" : "—") + '</span></div>' +
+          '<div class="kv"><span class="k">Recommendation score</span><span class="v">' +
+            (a && a.score != null ? a.score.toFixed(1) + " / 100" : "—") + '</span></div>' +
+          '<div class="row" style="margin-top:12px">' +
+            '<button class="btn btn-sm" onclick="whyThisSpace()">Why This Space?</button>' +
+            '<button class="btn btn-sm btn-ghost" onclick="showReceipt()">View Receipt</button>' +
+          '</div>';
+      }
+    }
+
+    const bEl = root.querySelector("#liveBilling");
+    if(bEl){
+      const s = state.session;
+      bEl.innerHTML =
+        '<div class="row" style="justify-content:space-between;margin-bottom:10px">' +
+          '<span class="plate small">' + (s.plate || "NO VEHICLE") + '</span>' +
+          '<span class="badge ' + (s.active ? "ok" : "") + '">' +
+            (s.active ? "IN LOT" : (s.receipt ? "CLOSED" : "—")) + '</span>' +
+        '</div>' +
+        '<div class="kv"><span class="k">Entry time</span><span class="v">' + (s.entryClock || "—") + '</span></div>' +
+        '<div class="kv"><span class="k">Assigned space</span><span class="v">' + (s.spaceId || "—") + '</span></div>' +
+        '<div class="kv"><span class="k">Simulated duration</span><span class="v">' +
+          (s.simMinutes ? s.simMinutes + " min" : "—") + '</span></div>' +
+        '<div class="kv"><span class="k">Current bill</span><span class="v">' +
+          (s.receipt ? CURRENCY + s.receipt.total.toFixed(2) : (s.active ? "running…" : "—")) + '</span></div>' +
+        '<div class="row" style="margin-top:12px">' +
+          '<button class="btn btn-sm" id="btnEntry" ' + (s.active ? "disabled" : "") + '>Simulate Entry</button>' +
+          '<button class="btn btn-sm" id="btnExit" ' + (!s.active ? "disabled" : "") + '>Exit &amp; Bill</button>' +
+        '</div>';
+
+      const be = bEl.querySelector("#btnEntry");
+      const bx = bEl.querySelector("#btnExit");
+      if(be) be.addEventListener("click", simulateEntry);
+      if(bx) bx.addEventListener("click", simulateExit);
+    }
+
+    const tbl = root.querySelector("#liveTable");
+    if(tbl){
+      const rows = state.spaces.map(function(sp){
+        const a = sp.assessment;
+        let st, badge;
+        if(sp.status === "unknown"){ st = "Not scanned"; badge = ""; }
+        else if(sp.status === "occupied"){ st = "Occupied"; badge = ""; }
+        else if(sp.status === "reserved"){ st = "Reserved"; badge = "warn"; }
+        else if(sp.unsafe){ st = "Unsafe approach"; badge = "bad"; }
+        else { st = "Free"; badge = "ok"; }
+
+        const typeTxt = sp.type === "ev" ? "⚡ EV" : sp.type === "disabled" ? "♿ Access" : "Standard";
+        const d = a && a.reachable ? a.distance.toFixed(1) : "—";
+        const cl = a ? Math.round(a.clearance*100) + "%" : "—";
+        return '<tr>' +
+          '<td class="mono" style="font-weight:700">' + sp.id + '</td>' +
+          '<td class="tiny dim">' + typeTxt + '</td>' +
+          '<td><span class="badge ' + badge + '">' + st + '</span></td>' +
+          '<td>' + d + '</td>' +
+          '<td>' + cl + '</td>' +
+          '<td>' + (a && a.score != null ? a.score.toFixed(1) : "—") + '</td>' +
+        '</tr>';
+      }).join("");
+      tbl.innerHTML = '<table class="tbl"><thead><tr>' +
+        '<th>Space</th><th>Type</th><th>Status</th><th>Route</th><th>Clearance</th><th>Score</th>' +
+        '</tr></thead><tbody>' + rows + '</tbody></table>';
+    }
+
+    const ai = root.querySelector("#liveAI");
+    if(ai){
+      ai.innerHTML = state.decisions.length
+        ? state.decisions.slice(0,12).map(function(d){
+            return '<div class="ai-item"><div class="ai-t">' + d.text + '</div>' +
+              '<div class="ai-time">' + d.time + '</div></div>';
+          }).join("")
+        : '<div class="empty">The AI decision log will explain each choice here.</div>';
+    }
+
+    const feed = root.querySelector("#liveFeed");
+    if(feed){
+      feed.innerHTML = state.events.length
+        ? state.events.slice(0,14).map(function(l){
+            return '<div class="feed-item ' + l.type + '"><span class="dot"></span><div>' +
+              '<div class="feed-text">' + l.text + '</div>' +
+              '<div class="feed-time">' + l.time + '</div></div></div>';
+          }).join("")
+        : '<div class="empty">No events yet.</div>';
+    }
+
+    if(this.hud) this.hud();
+  }
+};
+
+/* ---------------------------- WHY THIS SPACE ----------------------------- */
+function scoreRow(name, sub, val, weight, color){
+  const pct = clamp(parseFloat(val) / (weight*100) * 100, 0, 100);
+  return '<div style="margin-bottom:11px">' +
+    '<div class="row" style="justify-content:space-between;margin-bottom:4px">' +
+      '<span style="font-size:12.5px">' + name + ' <span class="dim tiny">· ' + sub + '</span></span>' +
+      '<span class="mono small" style="color:' + color + '">' + val + ' pts</span>' +
+    '</div>' +
+    '<div class="bar-mini"><div style="width:' + pct + '%;background:' + color + '"></div></div>' +
+  '</div>';
+}
+
+function whyThisSpace(){
+  const sp = state.spaces.find(function(s){ return s.id === state.targetId; });
+  if(!sp){
+    openModal('<h2>Why This Space?</h2><p class="muted">No space has been selected yet. ' +
+      'Run a scan or press "Find me a spot".</p>' +
+      '<button class="btn" style="margin-top:12px" onclick="closeModal()">Close</button>');
+    return;
+  }
+  const a = sp.assessment;
+  if(!a){
+    openModal('<h2>Why ' + sp.id + '?</h2><p class="muted">Run the assessment first.</p>' +
+      '<button class="btn" style="margin-top:12px" onclick="closeModal()">Close</button>');
+    return;
+  }
+
+  const parts = a.parts || {};
+  const f = function(x){ return ((x || 0) * 100).toFixed(1); };
+
+  let html = '<h2 style="margin-bottom:2px">Why ' + sp.id + '?</h2>' +
+    '<p class="small muted" style="margin-top:0">Transparent heuristic score — not a trained ML model.</p>';
+
+  html += '<div style="margin:14px 0">' +
+    scoreRow("Route distance", "shorter is better", f(parts.dist), WEIGHTS.dist, "#22d3ee") +
+    scoreRow("Obstacle proximity", "further from obstacles is better", f(parts.obstacle), WEIGHTS.obstacle, "#22c55e") +
+    scoreRow("Approach clearance", "unobstructed entry lane", f(parts.access), WEIGHTS.access, "#3b82f6") +
+    scoreRow("Maneuver ease", "less tight is better", f(parts.maneuver), WEIGHTS.maneuver, "#a855f7") +
+    scoreRow("Availability", "space is free", f(parts.avail), WEIGHTS.avail, "#f59e0b") +
+    scoreRow("Bay policy", "EV / accessible preference", f(parts.policy), WEIGHTS.policy, "#14b8a6") +
+  '</div>';
+
+  html += '<div class="kv"><span class="k">Total score</span><span class="v" style="color:#67e8f9;font-size:16px">' +
+    a.score.toFixed(1) + ' / 100</span></div>';
+  html += '<div class="kv"><span class="k">Route length</span><span class="v">' + a.distance.toFixed(1) + ' units</span></div>';
+  html += '<div class="kv"><span class="k">Nearest obstacle</span><span class="v">' +
+    (isFinite(a.minObs) ? a.minObs.toFixed(1) + ' units' : 'none') + '</span></div>';
+
+  const rejected = state.scores.filter(function(s){ return !s.reachable || s.clearance < 0.34; })
+                              .map(function(s){ return s.id; });
+  if(rejected.length){
+    html += '<p class="small" style="margin-top:14px;color:#fca5a5"><strong>Rejected:</strong> ' +
+      rejected.join(", ") + ' — approach blocked or route unreachable.</p>';
+  }
+  html += '<p class="tiny dim" style="margin-top:12px">Weights — distance ' + WEIGHTS.dist +
+    ', obstacles ' + WEIGHTS.obstacle + ', access ' + WEIGHTS.access +
+    ', maneuver ' + WEIGHTS.maneuver + ', availability ' + WEIGHTS.avail +
+    ', bay policy ' + WEIGHTS.policy + '.</p>';
+
+  html += '<button class="btn" style="margin-top:14px" onclick="closeModal()">Close</button>';
+  openModal(html);
+}
+
+/* ------------------------------- AI VISION ------------------------------- */
+pages.vision = {
+  html: function(){
+    return `
+    <section class="grid" style="grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);margin-bottom:15px">
+      <div class="card tight">
+        <div class="card-head">
+          <h3>Parking-Scene Visualization <span class="badge warn" style="margin-left:6px">SIMULATED</span></h3>
+          <span class="hint">not a live camera feed</span>
+        </div>
+        <div class="lot-wrap"><svg class="lot" id="visionLot"></svg></div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn btn-primary" id="btnDetect">${icon("eye",14)} Run Detection</button>
+          <span class="badge" id="detectState">Idle</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>Detection List</h3><span class="hint">illustrative</span></div>
+        <div id="detList" style="max-height:520px;overflow-y:auto"></div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-bottom:15px">
+      <div class="card-head"><h3>Perception Pipeline</h3><span class="hint">conceptual — simulated stages</span></div>
+      <div class="pipe" id="pipe"></div>
+    </section>
+
+    <section class="grid g3">
+      <div class="card"><div class="card-head"><h3>What is genuine</h3></div>
+        <p class="small muted">The parking-space model, the safety assessment, the recommendation scoring
+        and the A* route planner are real, working code running on simulated data.</p></div>
+      <div class="card"><div class="card-head"><h3>What is simulated</h3></div>
+        <p class="small muted">All object detections, confidence values, bounding boxes and the "camera"
+        view are scripted demonstration data. No image is processed.</p></div>
+      <div class="card"><div class="card-head"><h3>Image upload</h3></div>
+        <p class="small muted">Not implemented. Processing arbitrary uploaded images would require a real
+        computer-vision model, which is outside this prototype's scope.</p></div>
+    </section>`;
+  },
+
+  mount: function(root){
+    const lot = new LotView(root.querySelector("#visionLot"), {
+      interactive:false, boxes:true, showPath:false, showEgo:true
+    });
+    activeLots.push(lot);
+
+    const pipeline = ["Camera Input","Object Detection","Parking-Space Classification",
+                      "Obstacle Assessment","Route Planning","Parking Guidance"];
+    root.querySelector("#pipe").innerHTML = pipeline.map(function(p,i){
+      return '<span class="pipe-node" data-i="' + i + '">' + (i+1) + '. ' + p + '</span>' +
+             (i < pipeline.length-1 ? '<span class="pipe-arrow">→</span>' : "");
+    }).join("");
+
+    root.querySelector("#btnDetect").addEventListener("click", function(){
+      if(detectTimer){ clearTimeout(detectTimer); detectTimer = null; }
+      state.scanRevealed = false;
+      emit();
+
+      const badge = root.querySelector("#detectState");
+      if(badge){ badge.textContent = "Scanning…"; badge.className = "badge warn"; }
+
+      const nodes = $$(".pipe-node", root);
+      nodes.forEach(function(n){ n.classList.remove("on"); });
+
+      let step = 0;
+      function tick(){
+        if(step < nodes.length){
+          nodes[step].classList.add("on");
+          step++;
+          detectTimer = setTimeout(tick, 260);
+        } else {
+          detectTimer = null;
+          state.scanRevealed = true;
+          for(let i=0;i<state.spaces.length;i++){
+            if(state.spaces[i].status === "unknown") state.spaces[i].status = "free";
+          }
+          runAssessment();
+          const ranked = state.scores.filter(function(s){ return s.reachable; })
+                                    .sort(function(a,b){ return b.score - a.score; });
+          if(ranked.length) state.recommendedId = ranked[0].id;
+          if(badge){ badge.textContent = "Detection complete"; badge.className = "badge ok"; }
+          logEvt("info", "Simulated detection pass complete — " +
+                state.spaces.filter(function(s){ return s.status === "free"; }).length + " free spaces classified.");
+          logAI("Detection pass finished. Bounding boxes and confidence values shown are illustrative, " +
+                "not produced by a real model.");
+          emit();
+        }
+      }
+      tick();
+    });
+  },
+
+  update: function(){
+    const list = $("#detList");
+    if(!list) return;
+    if(!state.scanRevealed){
+      list.innerHTML = '<div class="empty">Press "Run Detection" to generate simulated detections.</div>';
+      return;
+    }
+    const items = [];
+    state.spaces.forEach(function(sp){
+      const conf = (0.82 + (hash(sp.id) % 15)/100).toFixed(2);
+      if(sp.status === "occupied") items.push({ t:"Vehicle", l:sp.id, c:conf, col:"#64748b" });
+      else if(sp.status === "reserved") items.push({ t:"Reserved Bay", l:sp.id, c:conf, col:"#f59e0b" });
+      else if(sp.unsafe) items.push({ t:"Blocked Route", l:sp.id, c:(0.66 + (hash(sp.id) % 18)/100).toFixed(2), col:"#ef4444" });
+      else items.push({ t:"Vacant Space", l:sp.id, c:conf, col:"#22c55e" });
+    });
+    state.obstacles.forEach(function(o){
+      const conf = (0.74 + (hash(o.id) % 20)/100).toFixed(2);
+      items.push({ t: o.type === "pedestrian" ? "Pedestrian" : "Obstacle", l:o.label, c:conf, col:"#f59e0b" });
+    });
+    list.innerHTML = items.map(function(i){
+      return '<div class="row" style="justify-content:space-between;padding:7px 0;border-bottom:1px dashed #16222e">' +
+        '<span class="small"><span style="color:' + i.col + '">●</span> ' + i.t +
+        ' <span class="dim tiny">· ' + i.l + '</span></span>' +
+        '<span class="mono tiny" style="color:' + i.col + '">' + i.c + '</span></div>';
+    }).join("");
+  }
+};
+
+/* ------------------------------ ROUTE PLANNER ---------------------------- */
+pages.route = {
+  html: function(){
+    return `
+    <section class="grid" style="grid-template-columns:minmax(0,1.7fr) minmax(0,1fr)">
+      <div class="card tight">
+        <div class="card-head">
+          <h3>Route Map — A* Grid Pathfinding</h3>
+          <span class="hint">blocked cells excluded</span>
+        </div>
+        <div class="lot-wrap"><svg class="lot" id="routeLot"></svg></div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn btn-primary" id="btnPlan">${icon("route",14)} Recalculate Route</button>
+          <button class="btn" id="btnObst2">Toggle Obstacles</button>
+        </div>
+      </div>
+
+      <div style="min-width:0">
+        <div class="card">
+          <div class="card-head"><h3>Route Status</h3></div>
+          <div id="routeStats"></div>
+        </div>
+
+        <div class="card" style="margin-top:15px">
+          <div class="card-head"><h3>How the planner works</h3></div>
+          <p class="small muted">The lot is discretised into a 20 × 14 grid. Cells inside parking bands are
+          blocked, except the cells of the selected target space. Obstacles block every cell within their
+          radius plus a 0.45-unit safety margin.</p>
+          <p class="small muted">A* searches with an octile heuristic and 8-directional movement (no corner
+          cutting). The resulting cell path is then string-pulled: intermediate waypoints are removed
+          whenever a straight segment stays clear of blocked cells with a 0.55-unit clearance corridor.</p>
+          <p class="tiny dim">The simulated planner demonstrates the concept only. It is not validated for
+          real-world vehicle control.</p>
+        </div>
+
+        <div class="card" style="margin-top:15px">
+          <div class="card-head"><h3>Alternative Spaces</h3></div>
+          <div id="routeAlts"></div>
+        </div>
+      </div>
+    </section>`;
+  },
+
+  mount: function(root){
+    const lot = new LotView(root.querySelector("#routeLot"), { interactive:true });
+    activeLots.push(lot);
+
+    root.querySelector("#btnPlan").addEventListener("click", function(){
+      const sp = state.spaces.find(function(s){ return s.id === state.targetId; }) ||
+                 state.spaces.find(function(s){ return s.status === "free"; });
+      if(!sp){ logEvt("warn", "No free space available to plan a route."); emit(); return; }
+      const res = computeRouteTo(sp);
+      if(res){
+        state.targetId = sp.id;
+        state.path = res.path;
+        state.sim.vehicleS = 0;
+        logEvt("ok", "Route recalculated to " + sp.id + " — " + res.length.toFixed(1) + " units.");
+        logAI("Route recalculated to " + sp.id + ". A* found a collision-free path of " +
+              res.length.toFixed(1) + " grid units.");
+      } else {
+        state.path = [];
+        logEvt("danger", "No collision-free route to " + sp.id + " from the current position.");
+        logAI("No collision-free route exists to " + sp.id + " right now.");
+      }
+      emit();
+    });
+    root.querySelector("#btnObst2").addEventListener("click", toggleObstacles);
+  },
+
+  update: function(){
+    const stats = $("#routeStats");
+    if(!stats) return;
+    const sp = state.spaces.find(function(s){ return s.id === state.targetId; });
+    const len = state.path.length > 1 ? pathLength(state.path) : 0;
+    const blockedCells = buildBlockedSet(state.obstacles).size;
+
+    if(!sp || !state.path.length){
+      stats.innerHTML = '<div class="empty">No active route.<br>Select a space and press "Recalculate Route".</div>';
+    } else {
+      const a = sp.assessment;
+      const complexity = a ? (a.difficulty < 0.45 ? "Low" : a.difficulty < 0.7 ? "Moderate" : "High") : "—";
+      const status = state.sim.status === "blocked"
+        ? '<span class="badge bad">BLOCKED</span>'
+        : '<span class="badge ok">CLEAR</span>';
+      stats.innerHTML =
+        '<div class="kv"><span class="k">Target space</span><span class="v mono" style="color:#67e8f9">' + sp.id + '</span></div>' +
+        '<div class="kv"><span class="k">Route status</span><span class="v">' + status + '</span></div>' +
+        '<div class="kv"><span class="k">Route distance</span><span class="v">' + len.toFixed(1) + ' units</span></div>' +
+        '<div class="kv"><span class="k">Waypoints</span><span class="v">' + (state.path.length-1) + '</span></div>' +
+        '<div class="kv"><span class="k">Blocked grid cells</span><span class="v">' + blockedCells + '</span></div>' +
+        '<div class="kv"><span class="k">Maneuver complexity</span><span class="v">' + complexity + '</span></div>';
+    }
+
+    const alts = $("#routeAlts");
+    if(alts){
+      const ranked = state.scores.filter(function(s){ return s.reachable; })
+                                 .sort(function(a,b){ return b.score - a.score; }).slice(0,5);
+      alts.innerHTML = ranked.length
+        ? ranked.map(function(r){
+            const spc = state.spaces.find(function(s){ return s.id === r.id; });
+            const good = spc && !spc.unsafe;
+            return '<div class="row" style="justify-content:space-between;padding:7px 0;border-bottom:1px dashed #16222e">' +
+              '<span class="small mono">' + r.id +
+                (state.targetId === r.id ? ' <span class="badge info">TARGET</span>' : "") + '</span>' +
+              '<span class="tiny" style="color:' + (good ? "#86efac" : "#fca5a5") + '">' +
+                r.distance.toFixed(1) + ' units · score ' + r.score.toFixed(1) + '</span></div>';
+          }).join("")
+        : '<div class="empty">No reachable routes. Run a scan or "Find me a spot" first.</div>';
+    }
+  }
+};
+
+/* ------------------------------- ANALYTICS ------------------------------- */
+pages.analytics = {
+  html: function(){
+    return `
+    <section class="card" style="margin-bottom:15px">
+      <div class="row" style="justify-content:space-between">
+        <div style="min-width:0">
+          <span class="badge warn">SIMULATED DEMONSTRATION METRICS</span>
+          <p class="small muted" style="margin:8px 0 0">These figures are generated by the in-browser
+          simulation. They are not real-world measurements and must not be presented as benchmarks.</p>
+        </div>
+        <button class="btn btn-danger" id="btnResetData">Reset Demo Data</button>
+      </div>
+    </section>
+
+    <section class="grid g4" id="anImpact" style="margin-bottom:15px"></section>
+    <section class="grid g4" id="anStats" style="margin-bottom:15px"></section>
+
+    <section class="card" style="margin-bottom:15px">
+      <div class="card-head">
+        <h3>Peak-Hour Demand Prediction</h3>
+        <span class="hint">simulated 24-hour occupancy forecast</span>
+      </div>
+      <div id="chartPeak"></div>
+      <p class="tiny dim" style="margin-top:10px">Simulated forecast: demand peaks around 08:00 and 18:00.
+      The system uses this curve to warn drivers and to pre-reserve bays during predicted peaks.</p>
+    </section>
+
+    <section class="grid g2" style="margin-bottom:15px">
+      <div class="card"><div class="card-head"><h3>Detection Summary</h3><span class="hint">last scan</span></div>
+        <div id="chart1"></div></div>
+      <div class="card"><div class="card-head"><h3>Recommendation Distribution</h3><span class="hint">spaces recommended</span></div>
+        <div id="chart2"></div></div>
+    </section>
+
+    <section class="grid g2">
+      <div class="card"><div class="card-head"><h3>Simulated Parking Duration</h3><span class="hint">minutes per completed run</span></div>
+        <div id="chart3"></div></div>
+      <div class="card"><div class="card-head"><h3>Run Summary</h3></div>
+        <div id="anSummary"></div></div>
+    </section>`;
+  },
+
+  mount: function(root){
+    root.querySelector("#btnResetData").addEventListener("click", function(){
+      state.metrics = {
+        runs:0, scans:0, spacesScanned:0, vacantDetected:0,
+        obstaclesIdentified:0, reroutes:0, completions:0,
+        parkTimes:[], recCounts:{}, unsafeRejections:0,
+        timeSavedMin:0, fuelSavedL:0, co2SavedKg:0, revenue:0
+      };
+      state.events = [];
+      state.decisions = [];
+      logEvt("info", "Demonstration metrics reset.");
+      logAI("All simulated metrics were reset to zero.");
+      emit();
+    });
+  },
+
+  update: function(){
+    const m = state.metrics;
+
+    const imp = $("#anImpact");
+    if(imp){
+      imp.innerHTML =
+        stat("Time saved", m.timeSavedMin.toFixed(1) + " min", "vs. manual searching (simulated)", "green") +
+        stat("Fuel saved", m.fuelSavedL.toFixed(2) + " L", "idling avoided (simulated)", "cyan") +
+        stat("CO₂ reduced", m.co2SavedKg.toFixed(2) + " kg", "estimated (simulated)", "blue") +
+        stat("Simulated revenue", CURRENCY + m.revenue.toFixed(2), "from generated bills", "violet");
+    }
+
+    const el = $("#anStats");
+    if(el){
+      el.innerHTML =
+        stat("Spaces scanned", m.spacesScanned, "per detection pass", "cyan") +
+        stat("Vacant detected", m.vacantDetected, "last scan", "green") +
+        stat("Obstacles identified", m.obstaclesIdentified, "last scan", "amber") +
+        stat("Routes recalculated", m.reroutes, "dynamic rerouting events", "blue") +
+        stat("Completed maneuvers", m.completions, "in simulation", "green") +
+        stat("Demo runs", m.runs, "total started", "gray") +
+        stat("Unsafe spaces rejected", m.unsafeRejections, "blocked approaches", "red") +
+        stat("Total scans", m.scans, "detection passes", "cyan");
+    }
+
+    const cp = $("#chartPeak");
+    if(cp){
+      const peak = DEMAND_CURVE.map(function(v,i){
+        return {
+          label: (i % 3 === 0) ? String(i).padStart(2,"0") : "",
+          value: v,
+          color: v >= 20 ? "#f59e0b" : (v >= 12 ? "#22d3ee" : "#3b82f6")
+        };
+      });
+      cp.innerHTML = barChart(peak, { height:230 }) +
+        '<div class="row tiny dim" style="justify-content:center;gap:16px;margin-top:8px">' +
+        '<span><span style="display:inline-block;width:9px;height:9px;background:#f59e0b;border-radius:2px"></span> Peak (≥20)</span>' +
+        '<span><span style="display:inline-block;width:9px;height:9px;background:#22d3ee;border-radius:2px"></span> Busy (12–19)</span>' +
+        '<span><span style="display:inline-block;width:9px;height:9px;background:#3b82f6;border-radius:2px"></span> Quiet (&lt;12)</span>' +
+        '</div>';
+    }
+
+    const c1 = $("#chart1");
+    if(c1){
+      c1.innerHTML = barChart([
+        { label:"Scanned",   value: m.spacesScanned || 0,       color:"#22d3ee" },
+        { label:"Vacant",    value: m.vacantDetected || 0,      color:"#22c55e" },
+        { label:"Occupied",  value: Math.max(0, (m.spacesScanned || 0) - (m.vacantDetected || 0)), color:"#64748b" },
+        { label:"Obstacles", value: m.obstaclesIdentified || 0, color:"#f59e0b" },
+        { label:"Reroutes",  value: m.reroutes || 0,            color:"#3b82f6" }
+      ]);
+    }
+
+    const c2 = $("#chart2");
+    if(c2){
+      const entries = Object.keys(m.recCounts).map(function(k){ return [k, m.recCounts[k]]; });
+      const palette = ["#22d3ee","#22c55e","#3b82f6","#a855f7","#f59e0b","#14b8a6","#ef4444"];
+      if(!entries.length){
+        c2.innerHTML = '<div class="empty">No recommendations recorded yet. Run the simulator.</div>';
+      } else {
+        c2.innerHTML = donut(entries.map(function(e,i){
+          return { label:e[0], value:e[1], color:palette[i % palette.length] };
+        })) +
+        '<div style="margin-top:12px">' + entries.map(function(e,i){
+          return '<div class="row" style="justify-content:space-between;font-size:12px;padding:3px 0">' +
+            '<span><span style="color:' + palette[i % palette.length] + '">●</span> ' + e[0] + '</span>' +
+            '<span class="mono">' + e[1] + '</span></div>';
+        }).join("") + '</div>';
+      }
+    }
+
+    const c3 = $("#chart3");
+    if(c3){
+      const data = m.parkTimes.map(function(v,i){
+        return { label: "#" + (i+1), value: v, color: "#22d3ee" };
+      });
+      c3.innerHTML = data.length
+        ? lineChart(data)
+        : '<div class="empty">No completed runs yet.</div>';
+    }
+
+    const sum = $("#anSummary");
+    if(sum){
+      sum.innerHTML =
+        '<div class="kv"><span class="k">Total scans</span><span class="v">' + m.scans + '</span></div>' +
+        '<div class="kv"><span class="k">Total demo runs</span><span class="v">' + m.runs + '</span></div>' +
+        '<div class="kv"><span class="k">Completed maneuvers</span><span class="v">' + m.completions + '</span></div>' +
+        '<div class="kv"><span class="k">Rerouting events</span><span class="v">' + m.reroutes + '</span></div>' +
+        '<div class="kv"><span class="k">Obstacles handled</span><span class="v">' + state.obstacles.length + '</span></div>' +
+        '<div class="kv"><span class="k">Simulated revenue</span><span class="v">' + CURRENCY + m.revenue.toFixed(2) + '</span></div>' +
+        '<p class="tiny dim" style="margin-top:14px">All values are produced by the frontend simulation. ' +
+        'No real-world accuracy, safety or performance claims are made.</p>';
+    }
+  }
+};
+
+/* ------------------------------ HOW IT WORKS ----------------------------- */
+pages.how = {
+  html: function(){
+    const steps = [
+      ["Step 1 — Sense",    "radar",  "Cameras and proximity sensors provide information about the parking area."],
+      ["Step 2 — Perceive", "eye",    "Computer vision identifies vehicles, vacant parking spaces, and potential obstacles."],
+      ["Step 3 — Assess",   "layers", "The system evaluates space availability, obstacle proximity, and approach clearance."],
+      ["Step 4 — Decide",   "play",   "A parking recommendation algorithm compares candidate spaces and selects a suitable target."],
+      ["Step 5 — Plan",     "route",  "A pathfinding algorithm calculates a route that avoids mapped obstacles."],
+      ["Step 6 — Guide",    "car",    "The system visually guides the vehicle through the simulated parking maneuver and recalculates when conditions change."]
+    ];
+    return `
+    <section class="card" style="margin-bottom:15px">
+      <h2>How AutoPark Nexus Works</h2>
+      <p class="muted" style="max-width:820px">Six stages take the vehicle from entering a crowded lot to a
+      completed, safety-assessed parking maneuver. Every stage below is implemented in this prototype as a
+      simulation.</p>
+    </section>
+
+    <section class="grid g3" style="margin-bottom:15px">
+      ${steps.map(function(s){
+        return '<div class="step-card">' +
+          '<div class="step-num">' + s[0] + '</div>' +
+          '<h4>' + s[0].split("— ")[1] + '</h4>' +
+          '<p>' + s[2] + '</p></div>';
+      }).join("")}
+    </section>
+
+    <section class="grid g2" style="margin-bottom:15px">
+      <div class="card">
+        <div class="card-head"><h3>System Architecture</h3><span class="hint">conceptual</span></div>
+        <div class="arch">
+          <div class="arch-node hi">Camera / Sensors</div>
+          <div class="arch-arrow">↓</div>
+          <div class="arch-node">Perception Module</div>
+          <div class="arch-arrow">↓</div>
+          <div class="arch-node">Parking-Space Detection</div>
+          <div class="arch-arrow">↓</div>
+          <div class="arch-node">Safety Assessment</div>
+          <div class="arch-arrow">↓</div>
+          <div class="arch-node hi">Space Recommendation</div>
+          <div class="arch-arrow">↓</div>
+          <div class="arch-node">Path Planning (A*)</div>
+          <div class="arch-arrow">↓</div>
+          <div class="arch-node">Vehicle Guidance Interface</div>
+        </div>
+        <p class="tiny dim" style="text-align:center;margin-top:12px">In this prototype, "Camera / Sensors" is
+        replaced by a simulated lot model.</p>
+      </div>
+
+      <div style="min-width:0">
+        <div class="card" style="margin-bottom:15px">
+          <div class="card-head"><h3>The problem we solve</h3></div>
+          <p class="small muted">Finding and safely parking in crowded areas is time-consuming and can lead
+          to accidents. Drivers circle for spaces, miss obstacles, and choose spots that are technically
+          empty but practically hard or unsafe to enter.</p>
+        </div>
+        <div class="card" style="margin-bottom:15px">
+          <div class="card-head"><h3>Our proposed solution</h3></div>
+          <p class="small muted">AutoPark Nexus detects vacant spaces, checks whether they are actually safe
+          to approach, ranks them with a transparent scoring model, plans a collision-aware route and guides
+          the vehicle along it — recalculating when conditions change.</p>
+        </div>
+        <div class="card" style="margin-bottom:15px">
+          <div class="card-head"><h3>Core innovation</h3></div>
+          <p class="small muted">Safety-aware recommendations instead of nearest-space selection, plus
+          explainable reasoning for every choice and dynamic route recalculation when new obstacles appear.</p>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Prototype limitations</h3></div>
+          <ul class="small muted" style="margin:0;padding-left:18px;line-height:1.7">
+            <li>No real cameras, sensors or vehicle control.</li>
+            <li>All detections and confidence values are simulated.</li>
+            <li>No trained machine-learning model is used — the recommender is a transparent heuristic.</li>
+            <li>The route planner operates on a simplified 2D grid, not real vehicle kinematics.</li>
+            <li>Billing and demand prediction are simulated, not connected to any real system.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h3>Future development opportunities</h3></div>
+      <div class="grid g3">
+        <div><h4 class="tiny dim">Perception</h4><p class="small muted" style="margin:0">Replace simulated
+          detections with a real object-detection model on camera input.</p></div>
+        <div><h4 class="tiny dim">Sensors</h4><p class="small muted" style="margin:0">Integrate ultrasonic /
+          LiDAR proximity data for live obstacle ranging.</p></div>
+        <div><h4 class="tiny dim">Planning</h4><p class="small muted" style="margin:0">Move from grid A* to
+          kinematic (Reeds–Shepp) planning with vehicle constraints.</p></div>
+        <div><h4 class="tiny dim">Recommendation</h4><p class="small muted" style="margin:0">Learn weights
+          from real parking behaviour while keeping explanations.</p></div>
+        <div><h4 class="tiny dim">Guidance</h4><p class="small muted" style="margin:0">HMI overlay for driver
+          guidance before any autonomous actuation.</p></div>
+        <div><h4 class="tiny dim">Safety</h4><p class="small muted" style="margin:0">Formal verification and
+          fail-safe stop conditions.</p></div>
+      </div>
+    </section>`;
+  },
+  mount: function(){},
+  update: function(){}
+};
+
+/* -------------------------------- ABOUT ---------------------------------- */
+pages.about = {
+  html: function(){
+    const innovations = [
+      ["Safety-aware recommendations",
+       "Instead of picking the nearest vacant space, the system rejects spaces whose approach is blocked and ranks the rest by a transparent multi-factor score.", true],
+      ["Dynamic obstacle handling",
+       "When a new obstacle appears on the planned route, the maneuver pauses and the route is recalculated automatically.", true],
+      ["Explainable recommendations",
+       "Every recommendation can be expanded into a per-factor score breakdown so a human can audit the decision.", true],
+      ["Integrated workflow",
+       "Detection → assessment → recommendation → planning → simulated guidance runs as one continuous flow in a single state model.", true],
+      ["Billing & demand prediction",
+       "Automatic number-plate based billing and a simulated peak-hour demand forecast are built into the same dashboard.", true],
+      ["Modular architecture",
+       "The perception, assessment, planning and guidance layers are separated so real cameras, sensors or vehicle-control hardware could replace the simulated inputs later.", false]
+    ];
+    return `
+    <section class="card" style="margin-bottom:15px">
+      <span class="badge info">HACKATHON PROTOTYPE · INTELLIGENT SYSTEMS &amp; AUTONOMOUS COMPUTING</span>
+      <h2 style="margin-top:10px">About AutoPark Nexus</h2>
+      <p class="muted" style="max-width:860px">AutoPark Nexus is an autonomous parking assistant concept.
+      It detects vacant spaces, evaluates whether they are genuinely safe to enter, recommends the most
+      suitable option with a transparent explanation, plans a collision-aware route and guides the vehicle
+      through the maneuver — recalculating whenever conditions change.</p>
+      <p class="small dim" style="max-width:860px;margin:0">Everything you see runs in the browser. No
+      backend, no API keys, no cloud services, no paid dependencies, no localStorage.</p>
+    </section>
+
+    <section class="grid g2" style="margin-bottom:15px">
+      <div class="card">
+        <div class="card-head"><h3>Our Innovation</h3></div>
+        ${innovations.map(function(x){
+          return '<div style="padding:11px 0;border-bottom:1px dashed #16222e">' +
+            '<div class="row" style="justify-content:space-between">' +
+              '<strong style="font-size:13px">' + x[0] + '</strong>' +
+              '<span class="badge ' + (x[2] ? "ok" : "warn") + '">' + (x[2] ? "WORKING" : "FUTURE") + '</span>' +
+            '</div>' +
+            '<p class="small muted" style="margin:6px 0 0">' + x[1] + '</p></div>';
+        }).join("")}
+      </div>
+
+      <div style="min-width:0">
+        <div class="card" style="margin-bottom:15px">
+          <div class="card-head"><h3>Technology Stack</h3></div>
+          <div class="kv"><span class="k">Frontend</span><span class="v">HTML + CSS + Vanilla JS (zero build step)</span></div>
+          <div class="kv"><span class="k">Rendering</span><span class="v">Inline SVG + CSS animations</span></div>
+          <div class="kv"><span class="k">Charts</span><span class="v">Hand-rolled SVG (no chart library)</span></div>
+          <div class="kv"><span class="k">Pathfinding</span><span class="v">A* with octile heuristic + string pulling</span></div>
+          <div class="kv"><span class="k">State</span><span class="v">Single central store, pub/sub updates</span></div>
+          <div class="kv"><span class="k">Voice</span><span class="v">Browser Speech Synthesis (optional)</span></div>
+          <div class="kv"><span class="k">Storage</span><span class="v">In-memory only — no localStorage</span></div>
+          <div class="kv"><span class="k">Backend</span><span class="v">None required</span></div>
+          <p class="tiny dim" style="margin-top:12px">The design maps directly onto a React + Vite +
+          Tailwind implementation: each page is a component, the LotView is an SVG component, and the
+          simulation engine is a hook. This single-file build was chosen so the demo runs reliably offline.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>Honesty Statement</h3></div>
+          <p class="small muted">This prototype does <strong>not</strong> use real cameras, sensors, live
+          feeds or a trained AI model. All detections, bounding boxes and confidence values are simulated
+          for demonstration. Billing and demand prediction are also simulated.</p>
+          <p class="small muted">What <strong>is</strong> genuinely implemented: the parking-lot model, the
+          safety assessment, the transparent recommendation scoring algorithm, the A* route planner with
+          obstacle avoidance, the billing calculation, and the full state-driven simulation.</p>
+          <p class="small muted" style="margin:0">No real-world accuracy, accident-reduction, financial or
+          performance claims are made anywhere in this application.</p>
+        </div>
+      </div>
+    </section>`;
+  },
+  mount: function(){},
+  update: function(){}
+};
+
+/* ==========================================================================
+   JUDGE DEMO — 10 scenes, deterministic
+   ========================================================================== */
+const JUDGE_SCENES = [
+  {
+    title: "Problem — a crowded lot",
+    page: "overview",
+    cap: "Scene 1 — A vehicle enters a crowded parking lot: 12 spaces, 6 occupied, 1 reserved, 2 obstacles. Drivers typically circle for several minutes looking for a safe space.",
+    apply: function(){
+      resetSim(true);
+      state.judge.active = true;
+      state.scanRevealed = false;
+      for(let i=0;i<state.spaces.length;i++){
+        const s = state.spaces[i];
+        if(s.status === "free") s.status = "unknown";
+        s.unsafe = false;
+      }
+      logEvt("info", "Judge demo started — vehicle entering parking lot.");
+      logAI("The lot is crowded. The system will not simply pick the nearest empty bay — it will check " +
+            "whether each bay is actually safe to approach.");
+      speak("Judge demo started. The parking lot is crowded.");
+    }
+  },
+  {
+    title: "Detection — scanning the lot",
+    page: "live",
+    cap: "Scene 2 — The system scans the area and identifies available, occupied and reserved spaces, plus obstacles in the driving lane.",
+    apply: function(){
+      state.scanRevealed = true;
+      let vacant = 0;
+      for(let i=0;i<state.spaces.length;i++){
+        const s = state.spaces[i];
+        if(s.status === "unknown") s.status = "free";
+        if(s.status === "free") vacant++;
+      }
+      state.metrics.scans++;
+      state.metrics.spacesScanned = state.spaces.length;
+      state.metrics.vacantDetected = vacant;
+      state.metrics.obstaclesIdentified = state.obstacles.length;
+      logEvt("ok", vacant + " vacant spaces detected out of " + state.spaces.length + ".");
+      logAI("Scan complete: " + vacant + " vacant spaces detected out of " + state.spaces.length +
+            ". One bay is reserved, so it is excluded from selection.");
+      speak(vacant + " vacant spaces detected.");
+    }
+  },
+  {
+    title: "Decision — rejecting an unsafe bay",
+    page: "live",
+    cap: "Scene 3 — The nearest vacant bay (A02) has an obstacle blocking its approach lane. The system rejects it rather than treating it as safe just because it is empty.",
+    apply: function(){
+      state.recommendedId = null;
+      state.targetId = null;
+      state.path = [];
+      runAssessment();
+      logEvt("warn", "Obstacle detected at the approach of A02 — entry lane blocked.");
+      logAI("Bay A02 is empty, but a trolley blocks its approach lane. Its clearance is 33%, below the " +
+            "34% safety threshold, and no collision-free route exists to it. A02 is rejected.");
+      speak("Bay A 0 2 rejected. Approach lane blocked.");
+      state.metrics.unsafeRejections++;
+    }
+  },
+  {
+    title: "Decision — choosing the safest space",
+    page: "live",
+    cap: "Scene 4 — The recommendation algorithm compares the remaining candidates and selects the best-scoring safe space, explaining the reasoning in plain language.",
+    apply: function(){
+      const ranked = runRecommendation();
+      if(ranked && ranked.length){
+        state.recommendedId = ranked[0].id;
+        state.targetId = ranked[0].id;
+      }
+      speak("Recommended space " + (state.targetId || "") + ".");
+    }
+  },
+  {
+    title: "Action — route planning and guidance",
+    page: "live",
+    cap: "Scene 5 — The route planner draws a collision-free path to the chosen space and the vehicle begins to follow it. A new obstacle then appears on the route.",
+    apply: function(){
+      const sp = state.spaces.find(function(s){ return s.id === state.targetId; });
+      if(!sp){
+        logEvt("warn", "No target space available for the judge demo.");
+        return;
+      }
+      const res = computeRouteTo(sp);
+      if(res){
+        state.path = res.path;
+        state.sim.vehicleS = 0;
+        state.sim.stage = STAGES.findIndex(function(s){ return s.key === "guide"; });
+        state.sim.stageT = 0;
+        state.sim.status = "running";
+        state.sim.injected = false;
+        state.sim.mode = "judge";
+        logEvt("ok", "Route planned to " + sp.id + " — " + res.length.toFixed(1) + " units.");
+        logAI("A* planned a collision-free route of " + res.length.toFixed(1) + " grid units to space " +
+              sp.id + ". Guidance engaged.");
+        speak("Route planned. Guiding to space " + sp.id + ".");
+      } else {
+        state.path = [];
+        state.sim.status = "nosafe";
+        logEvt("danger", "No route available to the selected space.");
+      }
+    }
+  },
+  {
+    title: "Reaction — dynamic rerouting",
+    page: "live",
+    cap: "Scene 6 — A new moving obstacle appears on the planned route. The maneuver pauses, the blockage is detected, and an alternative safe route is calculated automatically.",
+    apply: function(){
+      // If the sim has not yet detected the obstacle, force the reroute now.
+      if(state.sim.status !== "blocked"){
+        const total = pathLength(state.path);
+        if(total > 4){
+          const p = pointAt(state.path, total * 0.5);
+          const cx = Math.floor(p.x) + 0.5;
+          const cy = Math.floor(p.y) + 0.5;
+          let ok = true;
+          for(let i=0;i<state.obstacles.length;i++){
+            if(Math.hypot(state.obstacles[i].x - cx, state.obstacles[i].y - cy) < 1.6){ ok = false; break; }
+          }
+          if(ok && cy >= LANE_TOP && cy <= LANE_BOTTOM){
+            state.obstacles.push({ id:"OD9", x:cx, y:cy, r:0.7, type:"dynamic", label:"Moving obstacle" });
+          }
+        }
+        state.sim.status = "blocked";
+        state.sim.blockedT = 0;
+      }
+
+      const sp = state.spaces.find(function(s){ return s.id === state.targetId; });
+      const res = sp ? computeRouteTo(sp) : null;
+      if(res){
+        state.path = res.path;
+        state.sim.vehicleS = 0;
+        state.sim.status = "running";
+        state.sim.injected = true;
+        state.sim.stageT = 0;
+        state.sim.stage = STAGES.findIndex(function(s){ return s.key === "guide"; });
+        state.metrics.reroutes++;
+        logEvt("ok", "Alternative safe route calculated (" + res.length.toFixed(1) + " units).");
+        logAI("The new obstacle blocks the original route. The maneuver was paused, the route was " +
+              "recalculated around the blockage, and guidance resumed. New route: " +
+              res.length.toFixed(1) + " grid units.");
+        speak("Obstacle detected. Route recalculated. Resuming.");
+      } else {
+        state.path = [];
+        state.sim.status = "nosafe";
+        logEvt("danger", "No safe alternative route found.");
+        logAI("No safe alternative route exists. The vehicle should wait and the lot should be rescanned.");
+        speak("No safe alternative route found.");
+      }
+    }
+  },
+  {
+    title: "Completion — maneuver finished",
+    page: "live",
+    cap: "Scene 7 — The vehicle follows the recalculated route and completes the simulated parking maneuver. The bay is now marked occupied.",
+    apply: function(){
+      const sp = state.spaces.find(function(s){ return s.id === state.targetId; });
+      if(sp){
+        sp.status = "occupied";
+        sp.unsafe = false;
+        state.vehicle.parked = true;
+        state.vehicle.spaceId = sp.id;
+        state.session.spaceId = sp.id;
+        state.vehicle.x = sp.col + 1.5;
+        state.vehicle.y = sp.row + 1.5;
+      }
+      state.path = [];
+      state.sim.status = "done";
+      state.metrics.completions++;
+      state.metrics.runs++;
+      state.metrics.timeSavedMin += 3.5;
+      state.metrics.fuelSavedL += 0.12;
+      state.metrics.co2SavedKg += 0.28;
+      const minutes = 35 + (hash(state.targetId || "x") % 60);
+      state.session.simMinutes = minutes;
+      state.metrics.parkTimes.push(+(minutes/10).toFixed(1));
+      logEvt("ok", "Parking maneuver completed in simulation — vehicle parked in " + (state.targetId || "—") + ".");
+      logAI("Maneuver complete. Vehicle parked in space " + (state.targetId || "—") +
+            ". Session duration: " + minutes + " simulated minutes.");
+      speak("Parking complete in space " + (state.targetId || "") + ".");
+    }
+  },
+  {
+    title: "Billing — automatic charge on exit",
+    page: "live",
+    cap: "Scene 8 — The vehicle exits. The number plate is read, the parking duration is computed, and an itemised bill is generated automatically — including an EV discount.",
+    apply: function(){
+      if(!state.session.plate){
+        state.session.plate = mkPlate();
+        state.session.entryClock = nowStr();
+        state.session.active = true;
+      }
+      if(!state.session.simMinutes) state.session.simMinutes = 45;
+      state.session.active = false;
+      state.session.receipt = computeBill();
+      state.vehicle.parked = false;
+      state.vehicle.spaceId = null;
+      state.vehicle.x = EXIT.x;
+      state.vehicle.y = EXIT.y;
+      state.path = [];
+      state.sim.status = "idle";
+      logEvt("ok", "Vehicle " + state.session.plate + " exited. Bill generated.");
+      logAI("Billing computed for plate " + state.session.plate + " — " +
+            state.session.receipt.minutes + " simulated minutes, total " + CURRENCY +
+            state.session.receipt.total.toFixed(2) +
+            (state.session.receipt.note ? " (" + state.session.receipt.note + ")" : "") + ".");
+      speak("Billing complete. Total " + state.session.receipt.total.toFixed(0) + " rupees.");
+      showReceipt();
+    }
+  },
+  {
+    title: "Prediction — peak-hour demand",
+    page: "analytics",
+    cap: "Scene 9 — A simulated 24-hour demand forecast shows the expected peaks. The system can warn drivers and pre-reserve bays ahead of predicted busy periods.",
+    apply: function(){
+      logEvt("info", "Peak-hour demand forecast displayed (simulated).");
+      logAI("The demand curve is simulated, not measured. It peaks around 08:00 and 18:00, which is when " +
+            "safety-aware recommendations matter most.");
+      speak("Peak hour demand prediction displayed.");
+    }
+  },
+  {
+    title: "Impact & summary",
+    page: "analytics",
+    cap: "Scene 10 — Summary: the nearest empty bay was rejected as unsafe, a safer alternative was chosen, a new obstacle triggered dynamic rerouting, the maneuver completed, and the session was billed automatically. Impact counters show simulated time, fuel and CO₂ savings.",
+    apply: function(){
+      const m = state.metrics;
+      logEvt("ok", "Judge demo complete — all decisions are auditable in the AI decision log.");
+      logAI("Demo summary — runs: " + m.runs + ", completed maneuvers: " + m.completions +
+            ", reroutes: " + m.reroutes + ", unsafe bays rejected: " + m.unsafeRejections +
+            ". Simulated savings: " + m.timeSavedMin.toFixed(1) + " min, " +
+            m.fuelSavedL.toFixed(2) + " L fuel, " + m.co2SavedKg.toFixed(2) + " kg CO₂.");
+      speak("Demo complete. All decisions are logged and auditable.");
+    }
+  }
+];
+
+function startJudgeDemo(){
+  if(state.judge.active && state.judge.idx > 0){
+    // Already running — restart cleanly
+    applyJudgeScene(0);
+    return;
+  }
+  state.judge.active = true;
+  state.judge.idx = 0;
+  state.judge.paused = false;
+  $("#judgeBar").classList.add("show");
+  document.body.classList.add("judge-open");
+  const pb = $("#judgePause");
+  if(pb) pb.textContent = "⏸ Pause";
+  applyJudgeScene(0);
+}
+
+function applyJudgeScene(i){
+  const idx = clamp(i, 0, JUDGE_SCENES.length - 1);
+  state.judge.idx = idx;
+  const sc = JUDGE_SCENES[idx];
+
+  // Navigate first so the page reflects the scene
+  if(sc.page && currentPage !== sc.page){
+    go(sc.page);
+  }
+
+  sc.apply();
+  renderJudgeUi();
+  emit();
+}
+
+function renderJudgeUi(){
+  const i = state.judge.idx;
+  const sc = JUDGE_SCENES[i];
+  const no = $("#judgeSceneNo");
+  const ti = $("#judgeTitle");
+  const cap = $("#judgeCap");
+  if(no) no.textContent = "Scene " + (i+1) + " / " + JUDGE_SCENES.length;
+  if(ti) ti.textContent = sc.title || "—";
+  if(cap) cap.textContent = sc.cap || "—";
+
+  const dots = $("#judgeDots");
+  if(dots){
+    dots.innerHTML = JUDGE_SCENES.map(function(_, k){
+      return '<i class="' + (k === i ? "on" : (k < i ? "past" : "")) + '"></i>';
+    }).join("");
+  }
+  const prev = $("#judgePrev");
+  const next = $("#judgeNext");
+  if(prev) prev.disabled = (i === 0);
+  if(next) next.disabled = (i === JUDGE_SCENES.length - 1);
+}
+
+function hideJudgeBar(){
+  const bar = $("#judgeBar");
+  if(bar) bar.classList.remove("show");
+  document.body.classList.remove("judge-open");
+}
+
+/** Auto-advance the judge demo when the simulation reaches certain states. */
+function judgeTick(){
+  if(!state.judge.active || state.judge.paused) return;
+  const i = state.judge.idx;
+
+  // Scene 5 (index 4) → when the sim blocks, move to scene 6 (index 5)
+  if(i === 4 && state.sim.status === "blocked"){
+    applyJudgeScene(5);
+    return;
+  }
+  // Scene 6 (index 5) → when the sim completes, move to scene 7 (index 6)
+  if(i === 5 && state.sim.status === "done"){
+    applyJudgeScene(6);
+    return;
+  }
+}
+
+/* Judge bar buttons */
+$("#judgeNext").addEventListener("click", function(){
+  if(state.judge.idx < JUDGE_SCENES.length - 1) applyJudgeScene(state.judge.idx + 1);
+});
+$("#judgePrev").addEventListener("click", function(){
+  if(state.judge.idx > 0) applyJudgeScene(state.judge.idx - 1);
+});
+$("#judgeRestart").addEventListener("click", function(){
+  if(detectTimer){ clearTimeout(detectTimer); detectTimer = null; }
+  state.judge.paused = false;
+  const pb = $("#judgePause");
+  if(pb) pb.textContent = "⏸ Pause";
+  applyJudgeScene(0);
+});
+$("#judgeClose").addEventListener("click", function(){
+  if(detectTimer){ clearTimeout(detectTimer); detectTimer = null; }
+  state.judge.active = false;
+  state.judge.paused = false;
+  hideJudgeBar();
+  resetSim(true);
+  logEvt("info", "Judge demo exited. Simulation reset.");
+  emit();
+});
+$("#judgePause").addEventListener("click", function(){
+  state.judge.paused = !state.judge.paused;
+  this.textContent = state.judge.paused ? "▶ Resume" : "⏸ Pause";
+  if(state.judge.paused){
+    if(state.sim.status === "running") state.sim.status = "paused";
+  } else {
+    if(state.sim.status === "paused") state.sim.status = "running";
+  }
+  emit();
+});
+$("#judgeBtn").addEventListener("click", startJudgeDemo);
+
+/* ==========================================================================
+   INIT
+   ========================================================================== */
+function init(){
+  state.spaces = freshSpaces();
+  state.obstacles = freshObstacles();
+
+  buildNav();
+
+  const menuBtn = $("#menuBtn");
+  if(menuBtn){
+    menuBtn.addEventListener("click", function(){
+      const sb = $("#sidebar");
+      if(sb) sb.classList.toggle("open");
+    });
+  }
+
+  const voiceBtn = $("#voiceBtn");
+  if(voiceBtn) voiceBtn.addEventListener("click", toggleVoice);
+
+  // Close the sidebar when tapping outside on mobile
+  document.addEventListener("click", function(e){
+    const sb = $("#sidebar");
+    const mb = $("#menuBtn");
+    if(!sb || !sb.classList.contains("open")) return;
+    if(sb.contains(e.target) || (mb && mb.contains(e.target))) return;
+    sb.classList.remove("open");
+  });
+
+  updateVoiceBtn();
+  go("overview");
+
+  logEvt("info", "AutoPark Nexus prototype loaded — all data is simulated.");
+  logAI("System initialised. All detections, predictions and billing are simulated for demonstration.");
+  updateTopbar();
+
+  requestAnimationFrame(raf);
+}
+
+/* Expose handlers used by inline onclick attributes */
+window.closeModal = closeModal;
+window.selectSpace = selectSpace;
+window.whyThisSpace = whyThisSpace;
+window.showReceipt = showReceipt;
+
+init();
+</script>
+</body>
+</html>
