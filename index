@@ -1,0 +1,13 @@
+autoparknexus/
+├── README.md
+├── index.html                  (rename your current HTML)
+├── src/
+│   ├── parking_grid.py         (Grid + occupancy logic)
+│   ├── path_planner.py         (A* algorithm)
+│   ├── risk_scorer.py          (Risk assessment)
+│   └── main.py
+├── tests/
+│   ├── test_grid.py
+│   ├── test_planner.py
+│   └── test_risk.py
+└── requirements.txt
